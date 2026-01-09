@@ -1,0 +1,1014 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  Shield, User, BarChart3, AlertTriangle, Package, 
+  Users, Calendar, Video, MapPin, Camera, CheckCircle, 
+  XCircle, ChevronRight, Bell, Search, Dog, FileText,
+  LogOut, ArrowLeft, Activity, Lock, Eye, EyeOff, Key, 
+  ChevronDown, Send, QrCode, UserPlus, Clock, CalendarCheck,
+  Truck, HardHat, FileBarChart, Building,
+  Bike, ScanLine, Zap, FileSpreadsheet, Filter, MessageSquare, Siren,
+  CheckSquare, Radio, Flame, Megaphone, Skull,
+  Biohazard, Bomb, Hammer, Wind, Move, AlertOctagon, Info
+} from 'lucide-react';
+
+// --- ESTILOS GLOBALES ---
+const GlobalStyles = () => (
+  <style>{`
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+    @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); } 70% { box-shadow: 0 0 0 20px rgba(220, 38, 38, 0); } 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); } }
+    @keyframes pulse-orange { 0% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0.7); } 70% { box-shadow: 0 0 0 20px rgba(234, 88, 12, 0); } 100% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0); } }
+    @keyframes scan { 0% { top: 0%; } 50% { top: 100%; } 100% { top: 0%; } }
+    .animate-fade-in-up { animation: fadeInUp 0.5s ease-out forwards; }
+    .animate-pulse-red { animation: pulse-red 1.5s infinite; }
+    .animate-pulse-orange { animation: pulse-orange 2s infinite; }
+    .animate-scan { animation: scan 2s linear infinite; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  `}</style>
+);
+
+// --- CONSTANTES Y BASES DE DATOS ---
+const CREDENTIALS = {
+  guard: { user: 'Guardia', pass: '1234', name: 'Oficial Roberts' },
+  resident: { user: 'Prop.', pass: '1234', name: 'Familia Pérez' },
+  localAdmin: { user: 'AdminLocal', pass: '1234', name: 'Gerencia Los Robles' },
+  admin: { user: 'Admin', pass: '1234', name: 'Super Admin Global' }
+};
+
+// DATOS DE EMERGENCIAS
+const EMERGENCY_DATA = {
+    intrusion: { label: 'INTRUSIÓN', color: 'orange', icon: 'Footprints', procedure: '1. Bloquear acceso afectado.\n2. Visualizar cámaras perimetrales.\n3. Enviar patrulla al sector.\n4. Llamar al 911 si se confirma visualmente.' },
+    robo: { label: 'ROBO', color: 'orange', icon: 'Skull', procedure: '1. Asistir a la víctima si es seguro.\n2. Cerrar todas las salidas del barrio (Protocolo Cepo).\n3. Llamar al 911 inmediatamente.\n4. Resguardar registros de cámaras.' },
+    sismo: { label: 'SISMO', color: 'orange', icon: 'Activity', procedure: '1. Abrir portones automáticos manualmente.\n2. Cortar suministros de gas principales.\n3. Dirigir personas a zonas seguras (Plaza Central).\n4. Evaluar daños estructurales visibles.' },
+    fallas: { label: 'FALLAS ESTRUCT.', color: 'orange', icon: 'Hammer', procedure: '1. Aislar la zona de derrumbe o falla.\n2. Evacuar unidades colindantes.\n3. Cortar servicios en el sector.\n4. Llamar a Bomberos/Defensa Civil.' },
+    gas: { label: 'FUGA DE GAS', color: 'orange', icon: 'Wind', procedure: '1. NO accionar interruptores eléctricos.\n2. Evacuar sector inmediato.\n3. Cerrar llave de paso general.\n4. Llamar a ECOGAS y Bomberos.' },
+    
+    incendio: { label: 'INCENDIO', color: 'red', icon: 'Flame', procedure: '1. Llamar a Bomberos INMEDIATAMENTE.\n2. Activar alarma sonora general.\n3. Despejar acceso para autobomba.\n4. Usar extintores solo si el fuego es pequeño.' },
+    bomba: { label: 'AMENAZA BOMBA', color: 'red', icon: 'Bomb', procedure: '1. NO usar radios ni celulares cerca del objeto.\n2. Evacuar perímetro de 100 metros.\n3. Llamar a Brigada de Explosivos (911).\n4. No tocar ni mover paquetes sospechosos.' },
+    quimico: { label: 'SUST. PELIGROSAS', color: 'red', icon: 'Biohazard', procedure: '1. Evacuar en dirección contraria al viento.\n2. Evitar contacto con la sustancia.\n3. Alertar a hospitales cercanos.\n4. Usar EPP completo si es necesario acercarse.' },
+    tirador: { label: 'TIRADOR ACTIVO', color: 'red', icon: 'Crosshair', procedure: '1. Protocolo LOCKDOWN: Nadie entra, nadie sale.\n2. Residentes deben permanecer en sus casas, luces apagadas.\n3. Notificar ubicación del tirador al 911 constante.\n4. Protegerse (Correr, Esconderse, Pelear).' }
+};
+
+const RESIDENTS_DB = [
+  { id: 1, name: 'Juan Pérez', unit: 'UF 402', status: 'Active' },
+  { id: 2, name: 'María Gonzalez', unit: 'UF 105', status: 'Active' },
+  { id: 3, name: 'Roberto Carlos', unit: 'UF 303', status: 'Active' },
+  { id: 4, name: 'Ana Bolena', unit: 'UF 201', status: 'Debtor' },
+  { id: 5, name: 'Empresa Tech Soluciones', unit: 'Oficina 12', status: 'Active' },
+  { id: 6, name: 'Carlos Ruiz', unit: 'UF 505', status: 'Active' },
+];
+
+const SUPPLIERS_DB = [
+  { dni: '20123456', name: 'Mario Gas', company: 'Ecogas', category: 'Servicios', serviceType: 'Gas', plate: 'AB 123 CD', visits: 12 },
+  { dni: '30987654', name: 'José Electricidad', company: 'Electricidad Mendoza', category: 'Servicios', serviceType: 'Electricista', plate: 'AD 999 XX', visits: 5 },
+  { dni: '40555666', name: 'Logística Andreani', company: 'Andreani', category: 'Delivery', serviceType: '', plate: 'AA 000 BB', visits: 45 },
+];
+
+const AUTHORIZED_VISITS_DB = [
+  { id: 101, visitor: 'Esteban Quito', dni: '20.123.456', host: 'Juan Pérez (UF 402)', plate: 'AE 123 ZZ', occupants: 2, date: '2023-10-25', time: '10:30', status: 'Ingresó' },
+  { id: 102, visitor: 'Laura Vicuña', dni: '30.987.654', host: 'María Gonzalez (UF 105)', plate: 'AB 456 CC', occupants: 1, date: '2023-10-25', time: '11:15', status: 'Ingresó' },
+  { id: 103, visitor: 'Pedro Pascal', dni: '99.888.777', host: 'Carlos Ruiz (UF 505)', plate: '--', occupants: 1, date: '2023-10-26', time: '--', status: 'Pendiente' },
+];
+
+const LPR_LOGS_DB = [
+  { id: 1, time: '14:42:15', name: 'Juan Pérez', unit: 'UF 402', plate: 'AE 123 ZZ', type: 'facial_lpr', confidence: '98%', img: 'https://placehold.co/100x100/e2e8f0/64748b?text=JP' },
+  { id: 2, time: '14:35:20', name: 'María Gonzalez', unit: 'UF 105', plate: 'AB 456 CC', type: 'lpr', confidence: '99%', img: 'https://placehold.co/100x100/e2e8f0/64748b?text=MG' },
+  { id: 3, time: '14:10:05', name: 'Carlos Ruiz', unit: 'UF 505', plate: 'AD 999 XX', type: 'facial', confidence: '94%', img: 'https://placehold.co/100x100/e2e8f0/64748b?text=CR' },
+  { id: 4, time: '13:55:12', name: 'Empresa Tech', unit: 'Oficina 12', plate: 'AA 000 BB', type: 'lpr', confidence: '97%', img: 'https://placehold.co/100x100/e2e8f0/64748b?text=Tech' },
+];
+
+const AMENITIES_SLOTS = [
+  { time: '10:00 - 14:00', status: 'available' },
+  { time: '14:00 - 18:00', status: 'booked', by: 'UF 101 (Familia Lopez)' },
+  { time: '18:00 - 22:00', status: 'available' },
+  { time: '22:00 - 02:00', status: 'available' },
+];
+
+const INCIDENTS_DB = [
+  { id: 1, type: 'Ruidos Molestos', detail: 'Música alta fuera de horario', location: 'UF 402', time: '02:30 AM', status: 'Resuelto', severity: 'low', date: '2023-10-24' },
+  { id: 2, type: 'Portón Trabado', detail: 'Acceso secundario no cierra', location: 'Acceso Norte', time: '08:15 AM', status: 'Abierto', severity: 'high', date: '2023-10-25' },
+  { id: 3, type: 'Mascota Suelta', detail: 'Perro raza grande sin correa', location: 'Plaza Juegos', time: '10:00 AM', status: 'Resuelto', severity: 'medium', date: '2023-10-25' },
+];
+
+const PACKAGE_TYPES = ["Paquete", "Impuestos", "Documentación", "Cartas", "Judiciales", "Otro"];
+const SERVICE_TYPES = ["Internet", "Telefonía", "Gas", "Plomero", "Electricista", "Aire Acondicionado", "Calefacción", "Limpieza", "Jardinería", "Sistemas Electrónicos", "Otro"];
+const DELIVERY_PLATFORMS = ["Pedidos Ya", "Uber Eats", "Rappi", "Cabify", "Uber", "Otro"];
+
+const ROUND_POINTS_DATA = [
+    { id: 1, name: 'Garita Principal', status: 'pending', time: null },
+    { id: 2, name: 'Sala de Máquinas', status: 'pending', time: null },
+    { id: 3, name: 'Acceso Norte', status: 'pending', time: null },
+    { id: 4, name: 'Perímetro Oeste', status: 'pending', time: null },
+    { id: 5, name: 'Club House', status: 'pending', time: null },
+    { id: 6, name: 'Depósito Mantenimiento', status: 'pending', time: null },
+];
+
+const INITIAL_NOTIFICATIONS = [
+  { id: 998, type: 'info', title: 'Bienvenido', message: 'Bienvenido a Blindaje Digital App. Aquí recibirás tus alertas.', date: 'Hoy, 08:00', read: true, priority: 'low' },
+  { id: 999, type: 'amenity', title: 'Reserva Confirmada', message: 'Tu reserva del SUM para el sábado ha sido aprobada.', date: 'Ayer, 14:30', read: true, priority: 'normal' }
+];
+
+// --- HELPER ICONS ---
+const getIcon = (name, size, className) => {
+    switch(name) {
+        case 'Footprints': return <AlertOctagon size={size} className={className} />;
+        case 'Skull': return <Skull size={size} className={className} />;
+        case 'Activity': return <Activity size={size} className={className} />;
+        case 'Hammer': return <Hammer size={size} className={className} />;
+        case 'Wind': return <Wind size={size} className={className} />;
+        case 'Flame': return <Flame size={size} className={className} />;
+        case 'Bomb': return <Bomb size={size} className={className} />;
+        case 'Biohazard': return <Biohazard size={size} className={className} />;
+        case 'Crosshair': return <ScanLine size={size} className={className} />;
+        default: return <AlertTriangle size={size} className={className} />;
+    }
+};
+
+// --- UI COMPONENTS ---
+const Toast = ({ message, onClose, type = 'success' }) => {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 4000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  const bgColors = {
+    success: 'bg-slate-800 border-l-4 border-emerald-500',
+    error: 'bg-slate-800 border-l-4 border-red-500',
+    info: 'bg-slate-800 border-l-4 border-blue-500',
+    warning: 'bg-slate-800 border-l-4 border-orange-500'
+  };
+
+  return (
+    <div className={`fixed top-4 right-4 z-[9999] ${bgColors[type]} text-white px-6 py-4 rounded-lg shadow-2xl flex items-center gap-4 min-w-[300px] animate-fade-in-up`}>
+      <div className="flex-1">
+        <h4 className="font-bold text-sm uppercase tracking-wider mb-1">{type === 'error' ? 'Alerta' : 'Notificación'}</h4>
+        <p className="text-sm font-medium text-slate-300 whitespace-pre-line">{message}</p>
+      </div>
+      <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
+        <XCircle size={20} />
+      </button>
+    </div>
+  );
+};
+
+const Button = ({ children, onClick, variant = 'primary', className = '', size = 'md', disabled = false }) => {
+  const baseStyle = "font-bold rounded-lg transition-all active:scale-95 flex items-center justify-center gap-2 uppercase tracking-wide disabled:opacity-50 disabled:cursor-not-allowed shadow-sm";
+  const variants = {
+    primary: "bg-orange-600 text-white hover:bg-orange-700 shadow-orange-200 border border-orange-700", 
+    secondary: "bg-slate-700 text-white hover:bg-slate-800 border border-slate-800",
+    outline: "bg-white border-2 border-orange-600 text-orange-600 hover:bg-orange-50",
+    danger: "bg-red-600 text-white hover:bg-red-700 shadow-red-200",
+    success: "bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-200",
+    ghost: "text-slate-500 hover:bg-slate-100 hover:text-slate-900",
+    black: "bg-slate-900 text-white hover:bg-black shadow-lg"
+  };
+  const sizes = { sm: "px-3 py-1.5 text-xs", md: "px-5 py-3 text-sm", lg: "px-8 py-4 text-base" };
+  return <button onClick={onClick} disabled={disabled} className={`${baseStyle} ${variants[variant]} ${sizes[size]} ${className}`}>{children}</button>;
+};
+
+const Card = ({ children, className = '' }) => (
+  <div className={`bg-white rounded-xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] border border-slate-100 overflow-hidden ${className}`}>{children}</div>
+);
+
+const BrandLogo = ({ className = "text-2xl", light = false }) => (
+  <div className={`font-sans font-black tracking-tighter flex items-center gap-2 ${className}`}>
+    <div className="relative">
+      <Shield className="fill-orange-600 text-orange-600" size={32} />
+      <div className="absolute inset-0 flex items-center justify-center"><Lock size={14} className="text-white" strokeWidth={3} /></div>
+    </div>
+    <div className="flex flex-col leading-none">
+      <span className={light ? "text-white" : "text-slate-800"}>BLINDAJE</span>
+      <span className={`text-[10px] font-bold tracking-[0.2em] ${light ? "text-slate-300" : "text-orange-600"}`}>SEGURIDAD</span>
+    </div>
+  </div>
+);
+
+const ResidentSelector = ({ onSelect, selected }) => {
+  const [search, setSearch] = useState('');
+  const [showResults, setShowResults] = useState(false);
+  const filtered = RESIDENTS_DB.filter(r => r.name.toLowerCase().includes(search.toLowerCase()) || r.unit.toLowerCase().includes(search.toLowerCase()));
+  return (
+    <div className="space-y-2 relative">
+      <label className="text-xs font-black uppercase tracking-wider text-slate-600">Visita a (Unidad/Residente)</label>
+      {!selected ? (
+        <div className="relative">
+          <Search className="absolute left-3 top-3.5 w-5 h-5 text-slate-400" />
+          <input type="text" value={search} onChange={(e) => { setSearch(e.target.value); setShowResults(true); }} className="w-full pl-10 pr-4 py-3 rounded-lg border-2 border-slate-200 bg-slate-50 text-slate-900 focus:border-orange-500 focus:bg-white outline-none transition-all font-medium" placeholder="Buscar por Nombre o Unidad..." />
+          {showResults && search.length > 0 && (
+            <div className="absolute top-full left-0 w-full bg-white border border-slate-200 rounded-lg shadow-xl mt-1 z-50 max-h-60 overflow-y-auto">
+              {filtered.map(r => (
+                <div key={r.id} onClick={() => { onSelect(r); setSearch(''); setShowResults(false); }} className="p-3 hover:bg-orange-50 cursor-pointer border-b border-slate-50 last:border-0"><p className="font-bold text-slate-800">{r.name}</p><p className="text-xs text-slate-500">{r.unit}</p></div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="flex items-center justify-between p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+          <div className="flex items-center gap-3"><div className="bg-emerald-200 p-2 rounded-full text-emerald-700"><User size={20} /></div><div><p className="font-bold text-emerald-900">{selected.name}</p><p className="text-xs text-emerald-600 font-bold">{selected.unit}</p></div></div><button onClick={() => onSelect(null)} className="text-slate-400 hover:text-red-500"><XCircle size={20} /></button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const ReportsModule = ({ notify }) => {
+  const [reportType, setReportType] = useState('visitas');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [reportData, setReportData] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const generateReport = () => {
+    if (!startDate || !endDate) {
+        notify("Por favor seleccione un rango de fechas.", "error");
+        return;
+    }
+    
+    setIsLoading(true);
+    
+    setTimeout(() => {
+        let data = [];
+        switch(reportType) {
+          case 'visitas':
+            data = AUTHORIZED_VISITS_DB.map(v => ({ 
+                Fecha: v.date || '2023-10-25', 
+                Hora_Ingreso: v.time, 
+                Hora_Salida: '---', 
+                Visitante: v.visitor, 
+                DNI: v.dni, 
+                Destino: v.host, 
+                Tipo: 'Visita',
+                Estado: v.status 
+            }));
+            break;
+          case 'amenities':
+            data = [
+                { Recurso: 'SUM', Capacidad: 50, Reservas_Totales: 24, Ocupacion_Promedio: '65%', Horas_Pico: '20:00 - 00:00' },
+                { Recurso: 'Piscina', Capacidad: 30, Reservas_Totales: 112, Ocupacion_Promedio: '88%', Horas_Pico: '15:00 - 18:00' },
+            ];
+            break;
+          case 'incidentes':
+            data = INCIDENTS_DB.map(i => ({ 
+                ID: i.id, 
+                Fecha: i.date,
+                Tipo: i.type, 
+                Detalle: i.detail, 
+                Gravedad: i.severity.toUpperCase(), 
+                Ubicacion: i.location, 
+                Estado: i.status 
+            }));
+            break;
+          default: data = [];
+        }
+        setReportData(data);
+        setIsLoading(false);
+        notify("Reporte generado exitosamente.", "success");
+    }, 800);
+  };
+
+  const exportToCSV = () => {
+    if (!reportData || reportData.length === 0) return notify("No hay datos para exportar.", "error");
+    const headers = Object.keys(reportData[0]).join(",");
+    const rows = reportData.map(row => Object.values(row).join(","));
+    const blob = new Blob([[headers, ...rows].join("\n")], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `reporte_${reportType}_${startDate}_${endDate}.csv`;
+    link.click();
+    notify("Descarga iniciada.", "info");
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card className="p-6">
+        <h3 className="font-bold text-slate-800 text-lg mb-4 flex items-center gap-2"><FileBarChart className="text-orange-600" /> Generador de Reportes</h3>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+          <div className="w-full space-y-1">
+            <label className="text-xs font-bold uppercase text-slate-500">Tipo de Reporte</label>
+            <div className="relative"><select value={reportType} onChange={(e) => { setReportType(e.target.value); setReportData(null); }} className="w-full p-3 border-2 border-slate-200 rounded-lg bg-slate-50 font-bold text-slate-700 outline-none focus:border-orange-500 appearance-none cursor-pointer"><option value="visitas">Ingresos y Salidas</option><option value="amenities">Ocupación Amenities</option><option value="incidentes">Historial Incidentes</option><option value="proveedores">Recursos Proveedores</option></select><ChevronDown className="absolute right-3 top-3.5 w-5 h-5 text-slate-400 pointer-events-none" /></div>
+          </div>
+          <div className="w-full space-y-1"><label className="text-xs font-bold uppercase text-slate-500">Desde</label><input type="date" className="w-full p-3 border-2 border-slate-200 rounded-lg bg-slate-50 font-bold text-slate-700 outline-none focus:border-orange-500" onChange={(e) => setStartDate(e.target.value)} /></div>
+          <div className="w-full space-y-1"><label className="text-xs font-bold uppercase text-slate-500">Hasta</label><input type="date" className="w-full p-3 border-2 border-slate-200 rounded-lg bg-slate-50 font-bold text-slate-700 outline-none focus:border-orange-500" onChange={(e) => setEndDate(e.target.value)} /></div>
+          <div className="w-full"><Button onClick={generateReport} disabled={isLoading} className="w-full h-[50px]">{isLoading ? 'Procesando...' : 'GENERAR'}</Button></div>
+        </div>
+      </Card>
+      
+      {reportData && (
+          <div className="animate-fade-in-up space-y-4">
+              <div className="flex justify-between items-center bg-slate-100 p-3 rounded-lg border border-slate-200">
+                  <div>
+                      <h3 className="font-black text-sm text-slate-800 uppercase tracking-tight">Vista Previa del Reporte</h3>
+                      <p className="text-xs text-slate-500">Periodo: {startDate} al {endDate}</p>
+                  </div>
+                  <Button variant="success" size="sm" onClick={exportToCSV}><FileSpreadsheet size={16} /> EXPORTAR CSV</Button>
+              </div>
+              <Card className="p-0 overflow-x-auto border-t-4 border-t-orange-500">
+                  <table className="w-full text-left text-sm whitespace-nowrap">
+                      <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-black border-b border-slate-100 tracking-wider">
+                          <tr>{Object.keys(reportData[0]).map((header) => (<th key={header} className="px-6 py-4">{header.replace(/_/g, ' ')}</th>))}</tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                          {reportData.map((row, idx) => (
+                              <tr key={idx} className="hover:bg-orange-50/50 transition-colors">
+                                  {Object.values(row).map((val, i) => (<td key={i} className="px-6 py-4 font-medium text-slate-700">{val}</td>))}
+                              </tr>
+                          ))}
+                      </tbody>
+                  </table>
+              </Card>
+          </div>
+      )}
+    </div>
+  );
+};
+
+// --- COMPONENTES FALTANTES RECONSTRUIDOS PARA ESTABILIDAD ---
+
+const GuardSupplierWizard = ({ setScreen, notify }) => (
+  <div className="flex flex-col h-full bg-slate-50 text-slate-800">
+     <div className="p-4 border-b border-slate-200 bg-white flex items-center gap-4 shadow-sm">
+        <Button variant="secondary" size="sm" onClick={() => setScreen('dashboard')}><ArrowLeft className="w-4 h-4" /> VOLVER</Button>
+        <h2 className="font-black text-xl text-slate-800">INGRESO DE PROVEEDORES</h2>
+     </div>
+     <div className="p-8 flex items-center justify-center flex-col h-full text-slate-400">
+        <Truck size={48} className="mb-4" />
+        <p>Módulo de Proveedores Activo. Configurar detalles.</p>
+     </div>
+  </div>
+);
+
+const GuardPackageScreen = ({ setScreen, notify }) => (
+  <div className="flex flex-col h-full bg-slate-50 text-slate-800">
+     <div className="p-4 border-b border-slate-200 bg-white flex items-center gap-4 shadow-sm">
+        <Button variant="secondary" size="sm" onClick={() => setScreen('dashboard')}><ArrowLeft className="w-4 h-4" /> VOLVER</Button>
+        <h2 className="font-black text-xl text-slate-800">GESTIÓN DE PAQUETERÍA</h2>
+     </div>
+     <div className="p-8 flex items-center justify-center flex-col h-full text-slate-400">
+        <Package size={48} className="mb-4" />
+        <p>Módulo de Paquetería Activo. Configurar detalles.</p>
+     </div>
+  </div>
+);
+
+const GuardRoundsScreen = ({ setScreen, notify }) => (
+  <div className="flex flex-col h-full bg-slate-50 text-slate-800">
+     <div className="p-4 border-b border-slate-200 bg-white flex items-center gap-4 shadow-sm">
+        <Button variant="secondary" size="sm" onClick={() => setScreen('dashboard')}><ArrowLeft className="w-4 h-4" /> VOLVER</Button>
+        <h2 className="font-black text-xl text-slate-800">RONDAS ACTIVAS</h2>
+     </div>
+     <div className="p-8 flex items-center justify-center flex-col h-full text-slate-400">
+        <MapPin size={48} className="mb-4" />
+        <p>Módulo de Rondas Activo. Configurar detalles.</p>
+     </div>
+  </div>
+);
+
+// --- PANTALLAS EXTRAÍDAS DE GUARD VIEW ---
+
+// 1. GuardEmergencyScreen (COMPLETO Y FUNCIONAL)
+const GuardEmergencyScreen = ({ setScreen, notify, addGlobalNotification }) => {
+  const [selectedEmergency, setSelectedEmergency] = useState(null);
+  const [showEvacuationConfirm, setShowEvacuationConfirm] = useState(false);
+  const [evacuationActive, setEvacuationActive] = useState(false);
+
+  const handleEmergencySelect = (key, data) => {
+    setSelectedEmergency({ ...data, key });
+    // Notificación inmediata tipo popup al sistema
+    addGlobalNotification({
+        type: 'alert',
+        title: `ALERTA: ${data.label}`,
+        message: `El Guardia ha reportado: ${data.label}. Siga instrucciones.`,
+        priority: data.color === 'red' ? 'critical' : 'high',
+        color: data.color
+    });
+    notify(`Alerta de ${data.label} enviada a la comunidad.`, data.color === 'red' ? 'error' : 'warning');
+  };
+
+  const triggerEvacuation = () => {
+    setEvacuationActive(true);
+    setShowEvacuationConfirm(false);
+    
+    // Alerta CRÍTICA de Evacuación
+    addGlobalNotification({
+        type: 'evacuation',
+        title: '¡EVACUACIÓN INICIADA!',
+        message: `EMERGENCIA: ${selectedEmergency.label}. PROCEDA A LOS PUNTOS DE ENCUENTRO INMEDIATAMENTE.`,
+        priority: 'critical',
+        color: 'red'
+    });
+    notify("PROTOCOLO DE EVACUACIÓN ACTIVADO", "error");
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-slate-900 text-white relative">
+        {/* Header */}
+        <div className="p-4 border-b border-slate-700 flex items-center gap-4 shadow-sm z-10 bg-slate-900">
+            <Button variant="secondary" size="sm" onClick={() => setScreen('dashboard')} className="border-slate-600 text-slate-300 hover:text-white hover:bg-slate-700"><ArrowLeft className="w-4 h-4" /> VOLVER</Button>
+            <div>
+              <h2 className="font-black text-xl text-white tracking-tight flex items-center gap-2"><Siren className="text-red-500 animate-pulse" /> GESTIÓN DE EMERGENCIAS</h2>
+              <p className="text-xs text-slate-400 font-bold uppercase">Panel de Control Crítico</p>
+            </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto flex flex-col md:flex-row">
+            {/* COLUMNA IZQUIERDA: BOTONERA */}
+            <div className={`p-6 space-y-8 flex-1 ${selectedEmergency ? 'md:w-1/2' : 'w-full'}`}>
+                
+                {/* SECCIÓN NARANJA */}
+                <div>
+                    <h3 className="text-orange-500 font-black uppercase tracking-widest mb-4 border-b border-orange-500/30 pb-2 flex items-center gap-2"><AlertTriangle size={18}/> Alertas Nivel Naranja</h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                        {['intrusion', 'robo', 'sismo', 'fallas', 'gas'].map(key => (
+                            <button 
+                                key={key}
+                                onClick={() => handleEmergencySelect(key, EMERGENCY_DATA[key])}
+                                className={`group relative overflow-hidden rounded-xl p-4 flex flex-col items-center justify-center gap-3 border-2 transition-all active:scale-95 h-32 ${selectedEmergency?.key === key ? 'bg-orange-600 border-white ring-4 ring-orange-500/50' : 'bg-slate-800 border-orange-500/50 hover:bg-orange-900/20 hover:border-orange-500'}`}
+                            >
+                                <div className={`p-3 rounded-full ${selectedEmergency?.key === key ? 'bg-white text-orange-600' : 'bg-orange-500/20 text-orange-500 group-hover:bg-orange-500 group-hover:text-white transition-colors'}`}>
+                                    {getIcon(EMERGENCY_DATA[key].icon, 24)}
+                                </div>
+                                <span className="text-xs font-black uppercase tracking-wider text-center leading-tight">{EMERGENCY_DATA[key].label}</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* SECCIÓN ROJA */}
+                <div>
+                    <h3 className="text-red-500 font-black uppercase tracking-widest mb-4 border-b border-red-500/30 pb-2 flex items-center gap-2"><Flame size={18}/> Emergencias Críticas Nivel Rojo</h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-2 gap-4">
+                        {['incendio', 'bomba', 'quimico', 'tirador'].map(key => (
+                            <button 
+                                key={key}
+                                onClick={() => handleEmergencySelect(key, EMERGENCY_DATA[key])}
+                                className={`group relative overflow-hidden rounded-xl p-4 flex flex-col items-center justify-center gap-3 border-2 transition-all active:scale-95 h-32 ${selectedEmergency?.key === key ? 'bg-red-600 border-white ring-4 ring-red-500/50' : 'bg-slate-800 border-red-500/50 hover:bg-red-900/20 hover:border-red-500'}`}
+                            >
+                                <div className={`p-3 rounded-full ${selectedEmergency?.key === key ? 'bg-white text-red-600' : 'bg-red-500/20 text-red-500 group-hover:bg-red-500 group-hover:text-white transition-colors'}`}>
+                                    {getIcon(EMERGENCY_DATA[key].icon, 24)}
+                                </div>
+                                <span className="text-xs font-black uppercase tracking-wider text-center leading-tight">{EMERGENCY_DATA[key].label}</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {/* COLUMNA DERECHA: MANUAL Y EVACUACIÓN (Solo visible si hay selección) */}
+            {selectedEmergency && (
+                <div className="bg-slate-800 border-l border-slate-700 md:w-1/2 p-6 flex flex-col animate-fade-in-up shadow-2xl relative z-20">
+                    <div className="flex-1">
+                        <div className={`inline-block px-3 py-1 rounded mb-4 text-xs font-black uppercase tracking-widest ${selectedEmergency.color === 'red' ? 'bg-red-500 text-white' : 'bg-orange-500 text-white'}`}>
+                            Protocolo Activo
+                        </div>
+                        <h2 className="text-3xl font-black mb-6 leading-none">{selectedEmergency.label}</h2>
+                        
+                        <div className="bg-slate-900/50 p-6 rounded-xl border border-slate-600 mb-8">
+                            <h4 className="text-slate-400 uppercase text-xs font-bold mb-4 flex items-center gap-2"><Info size={16}/> Manual de Procedimiento</h4>
+                            <div className="space-y-3 text-sm font-medium text-slate-200 leading-relaxed whitespace-pre-line">
+                                {selectedEmergency.procedure}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="pt-6 border-t border-slate-700">
+                        {!evacuationActive ? (
+                            <button 
+                                onClick={() => setShowEvacuationConfirm(true)}
+                                className="w-full py-6 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-widest text-lg rounded-xl shadow-lg hover:shadow-red-900/50 transition-all border-b-4 border-red-800 active:border-b-0 active:translate-y-1 flex items-center justify-center gap-4 animate-pulse"
+                            >
+                                <Megaphone size={32} />
+                                ALERTA DE EVACUACIÓN
+                            </button>
+                        ) : (
+                            <div className="w-full py-6 bg-red-900/50 border-2 border-red-500 text-red-500 font-black uppercase tracking-widest text-center rounded-xl animate-pulse flex flex-col items-center justify-center gap-2">
+                                <Siren size={40} />
+                                <span>EVACUACIÓN EN CURSO</span>
+                            </div>
+                        )}
+                        <p className="text-center text-slate-500 text-xs mt-3 font-bold">Esta acción alertará a todos los residentes con alarma sonora.</p>
+                    </div>
+                </div>
+            )}
+        </div>
+
+        {/* MODAL DE CONFIRMACIÓN (DOBLE CONTROL) */}
+        {showEvacuationConfirm && (
+            <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in-up">
+                <div className="bg-slate-900 border-4 border-red-600 rounded-2xl p-8 max-w-md w-full shadow-2xl relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-2 bg-red-600 animate-pulse-red"></div>
+                    <div className="flex flex-col items-center text-center space-y-6">
+                        <div className="p-4 bg-red-600 text-white rounded-full animate-bounce">
+                            <AlertOctagon size={48} />
+                        </div>
+                        <div>
+                            <h3 className="text-2xl font-black text-white uppercase mb-2">¿CONFIRMA EVACUACIÓN?</h3>
+                            <p className="text-slate-300 text-sm font-medium">Está a punto de desplegar el <strong>Operativo de Evacuación</strong> por <strong>{selectedEmergency?.label}</strong>. Esto activará alarmas en todos los dispositivos.</p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 w-full">
+                            <button onClick={() => setShowEvacuationConfirm(false)} className="py-4 rounded-xl bg-slate-800 text-white font-bold hover:bg-slate-700 transition-colors uppercase text-sm">Cancelar</button>
+                            <button onClick={triggerEvacuation} className="py-4 rounded-xl bg-red-600 text-white font-black hover:bg-red-700 transition-colors uppercase text-sm shadow-lg shadow-red-900/50">CONFIRMAR</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
+    </div>
+  );
+};
+
+const GuardLprPopup = ({ data, onClose, notify, addGlobalNotification }) => {
+  if (!data) return null;
+  const confirmEntry = () => {
+      addGlobalNotification({
+          type: 'visit', title: 'Visita Automática', message: `Ingreso autorizado por LPR: ${data.name}.`, priority: 'normal'
+      });
+      onClose();
+  };
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-10 px-4 pointer-events-none">
+      <div className="bg-slate-900 border-l-8 border-emerald-500 rounded-r-lg shadow-2xl p-6 pointer-events-auto flex gap-6 max-w-lg w-full animate-fade-in-up relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-4 opacity-10"><ScanLine size={100} className="text-white" /></div>
+        <div className="relative z-10">
+          <div className="w-32 h-32 rounded-lg bg-slate-800 border-2 border-emerald-500 overflow-hidden relative shadow-lg">
+            <img src={data.photo} alt="Detección" className="w-full h-full object-cover" />
+            <div className="absolute inset-0 border-4 border-emerald-500/50 animate-pulse"></div>
+          </div>
+          <div className="mt-2 text-center"><span className="text-xs font-black text-emerald-400 bg-emerald-900/50 px-2 py-1 rounded uppercase tracking-wider">Match {data.match}</span></div>
+        </div>
+        <div className="flex-1 relative z-10 text-white">
+          <div className="flex justify-between items-start mb-2"><div><h3 className="text-emerald-400 font-black text-sm uppercase tracking-widest mb-1 flex items-center gap-2"><Zap size={14} className="fill-emerald-400" /> Detección Automática</h3><h2 className="text-2xl font-bold leading-none">{data.name}</h2></div><button onClick={onClose} className="text-slate-500 hover:text-white"><XCircle size={24} /></button></div>
+          <div className="space-y-3 mt-4"><div className="flex items-center gap-3 bg-slate-800/50 p-2 rounded"><Building size={18} className="text-slate-400" /><div><p className="text-[10px] text-slate-400 font-bold uppercase">Unidad</p><p className="font-medium text-sm">{data.unit}</p></div></div><div className="flex items-center gap-3 bg-slate-800/50 p-2 rounded"><Truck size={18} className="text-slate-400" /><div><p className="text-[10px] text-slate-400 font-bold uppercase">Vehículo</p><p className="font-mono font-bold text-lg tracking-wider">{data.plate}</p></div></div></div>
+          <div className="mt-4 flex gap-2"><button onClick={confirmEntry} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 rounded uppercase tracking-wide transition-colors">Confirmar Ingreso</button><button onClick={() => { notify("Alerta de seguridad activada", "error"); onClose(); }} className="px-3 bg-slate-700 hover:bg-red-600 text-white rounded transition-colors"><AlertTriangle size={16} /></button></div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const GuardLprScreen = ({ setScreen, triggerLprSimulation }) => (
+  <div className="flex flex-col h-full bg-slate-50 text-slate-800">
+    <div className="p-4 border-b border-slate-200 bg-white flex items-center justify-between gap-4 shadow-sm"><div className="flex items-center gap-4"><Button variant="secondary" size="sm" onClick={() => setScreen('dashboard')}><ArrowLeft className="w-4 h-4" /> VOLVER</Button><div><h2 className="font-black text-xl text-slate-800 tracking-tight">INGRESO AUTOMATIZADO</h2><p className="text-xs text-slate-500 font-bold uppercase">Reconocimiento Facial + LPR</p></div></div><Button variant="black" size="sm" onClick={triggerLprSimulation}><ScanLine size={16} /> SIMULAR DETECCIÓN EN VIVO</Button></div>
+    <div className="flex-1 p-6 overflow-y-auto"><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{LPR_LOGS_DB.map((log) => (<div key={log.id} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-shadow"><div className="flex"><div className="w-1/3 bg-slate-100 relative"><img src={log.img} alt="Capture" className="w-full h-full object-cover" /><div className="absolute bottom-0 left-0 w-full bg-black/60 text-white text-[10px] font-bold text-center py-1">Match: {log.confidence}</div></div><div className="flex-1 p-4"><div className="flex justify-between items-start mb-2"><span className="text-xs font-mono text-slate-400 font-bold">{log.time}</span>{log.type.includes('lpr') && log.type.includes('facial') ? (<span className="bg-purple-100 text-purple-700 text-[10px] font-black px-1.5 py-0.5 rounded uppercase">Dual</span>) : log.type.includes('lpr') ? (<span className="bg-blue-100 text-blue-700 text-[10px] font-black px-1.5 py-0.5 rounded uppercase">LPR</span>) : (<span className="bg-orange-100 text-orange-700 text-[10px] font-black px-1.5 py-0.5 rounded uppercase">Facial</span>)}</div><h3 className="font-bold text-slate-800 leading-tight mb-1">{log.name}</h3><p className="text-xs text-slate-500 font-medium mb-3">{log.unit}</p><div className="bg-slate-50 p-2 rounded border border-slate-100 flex items-center gap-2"><Truck size={14} className="text-slate-400" /><span className="font-mono font-bold text-slate-700 tracking-wider text-sm">{log.plate}</span></div></div></div></div>))}</div></div>
+  </div>
+);
+
+const GuardDashboard = ({ currentUser, notify, onBack, setScreen, addGlobalNotification }) => {
+    return (
+        <div className="flex flex-col h-full bg-slate-50 text-slate-800 font-sans">
+            <div className="h-20 px-6 bg-white border-b border-slate-200 flex justify-between items-center shadow-sm z-10"><div className="flex items-center gap-4"><BrandLogo /><div className="h-8 w-px bg-slate-200 mx-2"></div><div><h2 className="font-bold text-slate-800 text-sm tracking-wider uppercase">Puesto Principal</h2><p className="text-xs text-orange-600 font-bold">{currentUser} • Turno Día</p></div></div><div className="flex gap-3"><Button variant="secondary" size="md" onClick={onBack}>Cerrar Turno</Button></div></div>
+            <div className="p-6 grid grid-cols-2 md:grid-cols-3 gap-6 flex-1 overflow-y-auto bg-slate-50">
+            <button onClick={() => setScreen('supplier')} className="group bg-white hover:bg-orange-50 border-2 border-slate-200 hover:border-orange-500 p-6 rounded-2xl flex flex-col items-center gap-4 transition-all shadow-sm hover:shadow-md"><div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center group-hover:bg-orange-100 transition-colors"><Truck className="w-8 h-8 text-slate-600 group-hover:text-orange-600" /></div><span className="font-black text-lg text-slate-700 group-hover:text-orange-700 uppercase tracking-tight">Ingreso Proveedores</span></button>
+            <button onClick={() => setScreen('package')} className="group bg-white hover:bg-emerald-50 border-2 border-slate-200 hover:border-emerald-500 p-6 rounded-2xl flex flex-col items-center gap-4 transition-all shadow-sm hover:shadow-md"><div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center group-hover:bg-emerald-100 transition-colors"><Package className="w-8 h-8 text-slate-600 group-hover:text-emerald-600" /></div><span className="font-black text-lg text-slate-700 group-hover:text-emerald-700 uppercase tracking-tight">Paquetería</span></button>
+            <button onClick={() => setScreen('visits')} className="group bg-white hover:bg-purple-50 border-2 border-slate-200 hover:border-purple-500 p-6 rounded-2xl flex flex-col items-center gap-4 transition-all shadow-sm hover:shadow-md"><div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center group-hover:bg-purple-100 transition-colors"><UserPlus className="w-8 h-8 text-slate-600 group-hover:text-purple-600" /></div><span className="font-black text-lg text-slate-700 group-hover:text-purple-700 uppercase tracking-tight">Control Visitas</span></button>
+            <button onClick={() => setScreen('rounds')} className="group bg-white hover:bg-blue-50 border-2 border-slate-200 hover:border-blue-500 p-6 rounded-2xl flex flex-col items-center gap-4 transition-all shadow-sm hover:shadow-md"><div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center group-hover:bg-blue-100 transition-colors"><MapPin className="w-8 h-8 text-slate-600 group-hover:text-blue-600" /></div><span className="font-black text-lg text-slate-700 group-hover:text-blue-700 uppercase tracking-tight">Rondas Activas</span></button>
+            <button onClick={() => setScreen('lpr')} className="group bg-slate-900 hover:bg-slate-800 border-2 border-slate-800 hover:border-slate-700 p-6 rounded-2xl flex flex-col items-center gap-4 transition-all shadow-lg hover:shadow-xl"><div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center group-hover:bg-slate-700 transition-colors border border-slate-700"><ScanLine className="w-8 h-8 text-emerald-400 group-hover:text-emerald-300" /></div><span className="font-black text-lg text-white group-hover:text-slate-100 uppercase tracking-tight">Ingreso LPR / Facial</span></button>
+            
+            {/* BOTÓN DE EMERGENCIAS */}
+            <button onClick={() => setScreen('emergency')} className="group bg-red-600 hover:bg-red-700 border-2 border-red-500 hover:border-red-400 p-6 rounded-2xl flex flex-col items-center gap-4 transition-all shadow-lg hover:shadow-red-200">
+                <div className="w-16 h-16 rounded-full bg-red-500/30 border border-red-400/50 flex items-center justify-center group-hover:bg-red-500 transition-colors">
+                    <Siren className="w-8 h-8 text-white animate-pulse" />
+                </div>
+                <span className="font-black text-lg text-white uppercase tracking-tight">Emergencias</span>
+            </button>
+            </div>
+            <div className="h-1/3 bg-white border-t-2 border-orange-500 flex flex-col shadow-[0_-5px_20px_rgba(0,0,0,0.05)]"><div className="px-6 py-3 bg-orange-50 border-b border-orange-100 flex justify-between items-center"><h3 className="text-xs font-black text-orange-600 uppercase tracking-widest flex items-center gap-2"><Activity size={16} /> Registro de Eventos en Vivo</h3><span className="text-[10px] text-emerald-600 font-bold bg-emerald-100 px-2 py-1 rounded-full animate-pulse">● ONLINE</span></div><div className="flex-1 overflow-y-auto p-4 space-y-3 font-mono text-sm"><div className="flex gap-4 p-2 rounded hover:bg-slate-50 border-l-4 border-emerald-500"><span className="text-slate-400 font-bold">[14:45:12]</span><span className="text-slate-700">Acceso Autorizado » Lote 42 » Toyota Corolla AA123CD</span></div></div></div>
+        </div>
+    );
+};
+
+const GuardVisitsScreen = ({ setScreen, notify, addGlobalNotification }) => {
+  const [visitMode, setVisitMode] = useState('manual');
+  const [visitorName, setVisitorName] = useState('');
+  const [visitorLastName, setVisitorLastName] = useState('');
+  const [visitorDNI, setVisitorDNI] = useState('');
+  const [host, setHost] = useState(null);
+  const [plate, setPlate] = useState('');
+  const [occupantsCount, setOccupantsCount] = useState(1);
+  const [identifyOthers, setIdentifyOthers] = useState(false);
+
+  // 2. Aprobación Visita (Manual)
+  const handleManualRegister = () => { 
+      notify(`INGRESO REGISTRADO\nVisita: ${visitorName} ${visitorLastName}\nDestino: ${host?.unit}`); 
+      addGlobalNotification({ type: 'visit', title: 'Visita Ingresada', message: `La visita ${visitorName} ${visitorLastName} ha ingresado al barrio.`, priority: 'normal' });
+      setScreen('dashboard'); 
+  };
+  // 2. Aprobación Visita (QR)
+  const handleAuthorizeEntry = (visit) => { 
+      notify(`AUTORIZACIÓN QR VALIDADA\nIngreso permitido a ${visit.visitor}`); 
+      addGlobalNotification({ type: 'visit', title: 'Visita QR Ingresada', message: `Tu invitado ${visit.visitor} ha ingresado correctamente.`, priority: 'normal' });
+      setScreen('dashboard'); 
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-slate-50 text-slate-800">
+      <div className="p-4 border-b border-slate-200 bg-white flex items-center justify-between gap-4 shadow-sm"><div className="flex items-center gap-4"><Button variant="secondary" size="sm" onClick={() => setScreen('dashboard')}><ArrowLeft className="w-4 h-4" /> VOLVER</Button><h2 className="font-black text-xl text-slate-800 tracking-tight">CONTROL DE VISITAS</h2></div><div className="flex bg-slate-100 p-1 rounded-lg"><button onClick={() => setVisitMode('manual')} className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${visitMode === 'manual' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>REGISTRO MANUAL</button><button onClick={() => setVisitMode('authorized')} className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${visitMode === 'authorized' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>VISITAS AUTORIZADAS (QR)</button></div></div>
+      <div className="flex-1 p-6 overflow-y-auto">
+        {visitMode === 'manual' ? (
+          <div className="max-w-3xl mx-auto bg-white border border-slate-200 rounded-2xl shadow-xl p-8"><h3 className="text-lg font-black text-slate-800 mb-6 border-b border-slate-100 pb-2">DATOS DE INGRESO</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6"><div className="space-y-2"><label className="text-xs font-black uppercase text-slate-600">Nombre</label><input type="text" value={visitorName} onChange={e => setVisitorName(e.target.value)} className="w-full p-3 border-2 border-slate-200 rounded-lg bg-slate-50 focus:border-orange-500 outline-none font-bold" /></div><div className="space-y-2"><label className="text-xs font-black uppercase text-slate-600">Apellido</label><input type="text" value={visitorLastName} onChange={e => setVisitorLastName(e.target.value)} className="w-full p-3 border-2 border-slate-200 rounded-lg bg-slate-50 focus:border-orange-500 outline-none font-bold" /></div><div className="space-y-2"><label className="text-xs font-black uppercase text-slate-600">D.N.I. N°</label><input type="text" value={visitorDNI} onChange={e => setVisitorDNI(e.target.value)} className="w-full p-3 border-2 border-slate-200 rounded-lg bg-slate-50 focus:border-orange-500 outline-none font-bold" /></div><div className="space-y-2"><label className="text-xs font-black uppercase text-slate-600">Dominio Vehículo</label><input type="text" value={plate} onChange={e => setPlate(e.target.value)} className="w-full p-3 border-2 border-slate-200 rounded-lg bg-slate-50 focus:border-orange-500 outline-none font-bold uppercase" placeholder="AAA-000" /></div></div><div className="mb-6"><ResidentSelector onSelect={setHost} selected={host} /></div><div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 bg-slate-50 p-4 rounded-xl border border-slate-200"><div className="space-y-2"><label className="text-xs font-black uppercase text-slate-600">Número de Ocupantes</label><select value={occupantsCount} onChange={(e) => { setOccupantsCount(parseInt(e.target.value)); if(e.target.value === "1") setIdentifyOthers(false); }} className="w-full p-3 border-2 border-slate-200 rounded-lg bg-white focus:border-orange-500 outline-none font-bold cursor-pointer">{[1,2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}</select></div><div className="space-y-2 flex flex-col justify-end pb-1">{occupantsCount > 1 && (<div className="flex items-center gap-3"><div onClick={() => setIdentifyOthers(!identifyOthers)} className={`w-12 h-6 rounded-full cursor-pointer transition-colors relative ${identifyOthers ? 'bg-orange-600' : 'bg-slate-300'}`}><div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${identifyOthers ? 'left-7' : 'left-1'}`}></div></div><span className="text-sm font-bold text-slate-700">¿Identificar Acompañantes?</span></div>)}</div></div>{identifyOthers && occupantsCount > 1 && (<div className="mb-8 space-y-4"><h4 className="text-sm font-black text-slate-500 uppercase border-b border-slate-200 pb-1">Datos de Acompañantes</h4>{Array.from({ length: occupantsCount - 1 }).map((_, index) => (<div key={index} className="grid grid-cols-2 gap-4 bg-orange-50 p-3 rounded-lg border border-orange-100"><div className="flex items-center gap-2 col-span-2"><span className="bg-orange-200 text-orange-800 text-xs font-bold px-2 py-0.5 rounded-full">Acompañante {index + 1}</span></div><input placeholder="Apellido" className="p-2 text-sm border border-orange-200 rounded focus:border-orange-500 outline-none" /><input placeholder="DNI" className="p-2 text-sm border border-orange-200 rounded focus:border-orange-500 outline-none" /></div>))}</div>)}<div className="flex items-center justify-between border-t border-slate-100 pt-6"><div className="text-xs font-bold text-slate-400">HORA: <span className="text-slate-800">{new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span></div><Button onClick={handleManualRegister} size="lg" disabled={!host || !visitorName}>REGISTRAR INGRESO</Button></div></div>
+        ) : (
+          <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{AUTHORIZED_VISITS_DB.map(visit => (<div key={visit.id} className="bg-white border-l-4 border-l-emerald-500 rounded-lg shadow-md p-5 hover:shadow-xl transition-shadow relative"><div className="absolute top-4 right-4 text-emerald-600"><QrCode size={32} /></div><h4 className="font-black text-lg text-slate-800 mb-1">{visit.visitor}</h4><p className="text-sm text-slate-500 font-bold mb-4">DNI: {visit.dni}</p><div className="space-y-2 text-sm text-slate-600 mb-4"><div className="flex items-center gap-2"><User size={14} /> <span className="font-medium">Visita a: {visit.host}</span></div><div className="flex items-center gap-2"><Users size={14} /> <span>Ocupantes: {visit.occupants}</span></div><div className="flex items-center gap-2"><Activity size={14} /> <span className="uppercase text-xs font-bold bg-slate-100 px-2 rounded">Patente: {visit.plate}</span></div></div><Button size="sm" variant="success" className="w-full" onClick={() => handleAuthorizeEntry(visit)}>VALIDAR INGRESO</Button></div>))}<div className="border-2 border-dashed border-slate-300 rounded-lg p-5 flex flex-col items-center justify-center text-slate-400 hover:border-orange-500 hover:text-orange-500 cursor-pointer transition-colors h-full min-h-[200px]" onClick={() => notify("Simulación: Cámara activada para escanear QR", "info")}><Camera size={40} className="mb-2" /><span className="font-bold">ESCANEAR QR</span></div></div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const GuardView = ({ onBack, currentUser, notify, addGlobalNotification }) => {
+  const [screen, setScreen] = useState('dashboard'); 
+  const [lprPopupData, setLprPopupData] = useState(null);
+
+  const triggerLprSimulation = () => {
+      const mockEvent = { name: "Carlos Ruiz", unit: "UF 505", plate: "AD 999 XX", photo: "https://placehold.co/150x150/e2e8f0/64748b?text=CR", match: "98%", type: "Propietario" };
+      setLprPopupData(mockEvent);
+  };
+
+  return (
+    <div className="h-full w-full relative">
+        {screen === 'dashboard' && <GuardDashboard currentUser={currentUser} notify={notify} onBack={onBack} setScreen={setScreen} addGlobalNotification={addGlobalNotification} />}
+        {screen === 'supplier' && <GuardSupplierWizard setScreen={setScreen} notify={notify} />}
+        {screen === 'rounds' && <GuardRoundsScreen setScreen={setScreen} notify={notify} addGlobalNotification={addGlobalNotification} />}
+        {screen === 'package' && <GuardPackageScreen setScreen={setScreen} currentUser={currentUser} notify={notify} addGlobalNotification={addGlobalNotification} />}
+        {screen === 'visits' && <GuardVisitsScreen setScreen={setScreen} notify={notify} addGlobalNotification={addGlobalNotification} />}
+        {screen === 'lpr' && <GuardLprScreen setScreen={setScreen} triggerLprSimulation={triggerLprSimulation} />}
+        {screen === 'emergency' && <GuardEmergencyScreen setScreen={setScreen} notify={notify} addGlobalNotification={addGlobalNotification} />}
+        {lprPopupData && <GuardLprPopup data={lprPopupData} onClose={() => setLprPopupData(null)} notify={notify} addGlobalNotification={addGlobalNotification} />}
+    </div>
+  );
+};
+
+const ResidentNotificationCenter = ({ notifications, setActiveScreen, markAsRead }) => {
+    return (
+        <div className="flex flex-col h-full bg-slate-50 text-slate-800">
+            <div className="p-4 border-b border-slate-200 bg-white flex items-center gap-4 shadow-sm">
+                <Button variant="secondary" size="sm" onClick={() => setActiveScreen('home')}><ArrowLeft className="w-4 h-4" /> VOLVER</Button>
+                <h2 className="font-black text-xl text-slate-800 tracking-tight">NOTIFICACIONES</h2>
+            </div>
+            <div className="flex-1 p-4 overflow-y-auto space-y-3">
+                {notifications.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-64 text-slate-400">
+                        <Bell size={48} className="mb-2 opacity-20" />
+                        <p>No tienes notificaciones</p>
+                    </div>
+                ) : (
+                    notifications.map((notif) => (
+                        <div key={notif.id} className={`bg-white p-4 rounded-xl border-l-4 shadow-sm relative overflow-hidden transition-all ${notif.read ? 'border-slate-300 opacity-70' : 'border-orange-500'}`}>
+                            {notif.priority === 'critical' && <div className="absolute inset-0 bg-red-500/10 animate-pulse pointer-events-none"></div>}
+                            <div className="flex justify-between items-start mb-1 relative z-10">
+                                <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${notif.priority === 'critical' ? 'bg-red-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                                    {notif.priority === 'critical' ? 'ALERTA CRÍTICA' : notif.type === 'package' ? 'PAQUETERÍA' : notif.type === 'visit' ? 'VISITAS' : 'GENERAL'}
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-bold">{notif.date}</span>
+                            </div>
+                            <h3 className={`font-bold text-sm mb-1 ${notif.priority === 'critical' ? 'text-red-600' : 'text-slate-800'}`}>{notif.title}</h3>
+                            <p className="text-xs text-slate-500 leading-relaxed mb-3">{notif.message}</p>
+                            {!notif.read && (
+                                <button onClick={() => markAsRead(notif.id)} className="text-[10px] font-bold text-orange-600 uppercase hover:underline">Marcar como leído</button>
+                            )}
+                        </div>
+                    ))
+                )}
+            </div>
+        </div>
+    );
+};
+
+const ResidentServiceNoticeScreen = ({ setActiveScreen, notify }) => {
+  const [serviceType, setServiceType] = useState('supplier');
+  const [supplierCategory, setSupplierCategory] = useState('');
+  const [supplierName, setSupplierName] = useState('');
+  const [deliveryPlatform, setDeliveryPlatform] = useState('');
+  const [otherPlatform, setOtherPlatform] = useState('');
+  const [storeName, setStoreName] = useState('');
+
+  const handleSubmit = () => {
+      let message = "";
+      if (serviceType === 'supplier') {
+          message = `AVISO ENVIADO AL GUARDIA\nEsperando Proveedor: ${supplierName}\nRubro: ${supplierCategory}`;
+      } else {
+          const platform = deliveryPlatform === 'Otro' ? otherPlatform : deliveryPlatform;
+          message = `AVISO ENVIADO AL GUARDIA\nEsperando Delivery de: ${storeName}\nTrae: ${platform}`;
+      }
+      notify(message);
+      setActiveScreen('home');
+  };
+
+  return (
+      <div className="p-4 bg-white h-full overflow-y-auto flex flex-col">
+          <div className="flex items-center gap-4 mb-6"><button onClick={() => setActiveScreen('home')} className="p-2 bg-slate-100 rounded-full"><ArrowLeft size={20} className="text-slate-600" /></button><h2 className="font-black text-xl text-slate-800">AVISO A GUARDIA</h2></div>
+          <div className="flex bg-slate-100 p-1 rounded-xl mb-6"><button onClick={() => setServiceType('supplier')} className={`flex-1 py-3 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${serviceType === 'supplier' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500'}`}><Truck size={18} /> Proveedor</button><button onClick={() => setServiceType('delivery')} className={`flex-1 py-3 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${serviceType === 'delivery' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500'}`}><Bike size={18} /> Delivery</button></div>
+          <div className="flex-1 space-y-6">
+              {serviceType === 'supplier' ? (
+                  <div className="space-y-4 animate-fade-in-up"><div><label className="text-xs font-bold uppercase text-slate-500 block mb-2">Rubro / Servicio</label><select value={supplierCategory} onChange={(e) => setSupplierCategory(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 outline-none focus:border-orange-500"><option value="">Seleccione...</option>{SERVICE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}</select></div><div><label className="text-xs font-bold uppercase text-slate-500 block mb-2">Nombre Empresa / Profesional</label><input type="text" value={supplierName} onChange={(e) => setSupplierName(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 outline-none focus:border-orange-500" placeholder="Ej: Plomero Juan" /></div></div>
+              ) : (
+                  <div className="space-y-4 animate-fade-in-up"><div><label className="text-xs font-bold uppercase text-slate-500 block mb-2">Plataforma de Delivery</label><select value={deliveryPlatform} onChange={(e) => setDeliveryPlatform(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 outline-none focus:border-orange-500"><option value="">Seleccione...</option>{DELIVERY_PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}</select></div>{deliveryPlatform === 'Otro' && (<div><label className="text-xs font-bold uppercase text-slate-500 block mb-2">Especifique Plataforma/Empresa</label><input type="text" value={otherPlatform} onChange={(e) => setOtherPlatform(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 outline-none focus:border-orange-500" placeholder="Nombre empresa" /></div>)}<div><label className="text-xs font-bold uppercase text-slate-500 block mb-2">Local / Restaurante (Origen)</label><input type="text" value={storeName} onChange={(e) => setStoreName(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 outline-none focus:border-orange-500" placeholder="Ej: McDonald's, Farmacity" /></div></div>
+              )}
+              <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-start gap-3"><Activity className="text-blue-600 flex-shrink-0 mt-1" size={20} /><p className="text-xs text-blue-800 leading-relaxed"><strong>Nota:</strong> Esta información llegará al Guardia como una alerta prioritaria. El personal de seguridad validará identidad pero agilizará el ingreso.</p></div>
+              <Button size="lg" className="w-full shadow-xl mt-4" onClick={handleSubmit} disabled={serviceType === 'supplier' ? (!supplierCategory || !supplierName) : (!deliveryPlatform || !storeName)}>ENVIAR AVISO A GUARDIA</Button>
+          </div>
+      </div>
+  );
+};
+
+const ResidentNewVisitScreen = ({ setActiveScreen, notify }) => {
+  const [step, setStep] = useState(1);
+  const [occupants, setOccupants] = useState(1);
+  const [additionalGuests, setAdditionalGuests] = useState([]);
+
+  useEffect(() => {
+      if (occupants > 1) {
+          const needed = occupants - 1;
+          setAdditionalGuests(prev => {
+              const newGuests = [...prev];
+              if (newGuests.length < needed) { for (let i = newGuests.length; i < needed; i++) { newGuests.push({ name: '', lastName: '', dni: '' }); } } 
+              else if (newGuests.length > needed) { return newGuests.slice(0, needed); }
+              return newGuests;
+          });
+      } else { setAdditionalGuests([]); }
+  }, [occupants]);
+
+  const updateGuest = (index, field, value) => {
+      const updated = [...additionalGuests];
+      updated[index][field] = value;
+      setAdditionalGuests(updated);
+  };
+
+  return (
+    <div className="p-4 bg-white h-full overflow-y-auto flex flex-col">
+        <div className="flex items-center gap-4 mb-6"><button onClick={() => setActiveScreen('home')} className="p-2 bg-slate-100 rounded-full"><ArrowLeft size={20} className="text-slate-600" /></button><h2 className="font-black text-xl text-slate-800">NUEVA VISITA</h2></div>
+        {step === 1 ? (
+           <div className="flex-1 space-y-6">
+              <div className="space-y-2"><label className="text-xs font-bold uppercase text-slate-500">Nombre del Invitado Principal</label><input className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 outline-none focus:border-orange-500" placeholder="Ej: Roberto Gomez" /></div>
+              <div className="grid grid-cols-2 gap-4"><div className="space-y-2"><label className="text-xs font-bold uppercase text-slate-500">DNI</label><input className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 outline-none focus:border-orange-500" placeholder="Número" /></div><div className="space-y-2"><label className="text-xs font-bold uppercase text-slate-500">Patente</label><input className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 outline-none focus:border-orange-500 uppercase" placeholder="AAA-000" /></div></div>
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4"><div className="flex justify-between items-center"><label className="text-xs font-bold uppercase text-slate-500">Ocupantes Totales</label><span className="text-xl font-black text-orange-600">{occupants}</span></div><input type="range" min="1" max="5" value={occupants} onChange={(e) => setOccupants(parseInt(e.target.value))} className="w-full accent-orange-600" /></div>
+              {occupants > 1 && (<div className="space-y-4 animate-fade-in-up"><h3 className="text-sm font-black text-slate-700 uppercase border-b border-slate-200 pb-2">Datos Acompañantes</h3>{additionalGuests.map((guest, idx) => (<div key={idx} className="bg-orange-50 p-4 rounded-xl border border-orange-100 space-y-3"><p className="text-xs font-bold text-orange-700 uppercase">Acompañante {idx + 1}</p><div className="grid grid-cols-2 gap-3"><input placeholder="Nombre" value={guest.name} onChange={e => updateGuest(idx, 'name', e.target.value)} className="p-3 bg-white border border-orange-200 rounded-lg text-sm outline-none focus:border-orange-500" /><input placeholder="Apellido" value={guest.lastName} onChange={e => updateGuest(idx, 'lastName', e.target.value)} className="p-3 bg-white border border-orange-200 rounded-lg text-sm outline-none focus:border-orange-500" /></div><input placeholder="DNI N°" value={guest.dni} onChange={e => updateGuest(idx, 'dni', e.target.value)} className="w-full p-3 bg-white border border-orange-200 rounded-lg text-sm outline-none focus:border-orange-500" /></div>))}</div>)}
+              <div className="pt-4"><Button size="lg" className="w-full shadow-xl" onClick={() => setStep(2)}>GENERAR AUTORIZACIÓN</Button></div>
+           </div>
+        ) : (
+           <div className="flex-1 flex flex-col items-center justify-center space-y-8 animate-fade-in-up"><div className="text-center space-y-2"><CheckCircle size={48} className="text-emerald-500 mx-auto" /><h3 className="text-2xl font-black text-slate-800">¡LISTO!</h3><p className="text-slate-500">Autorización generada correctamente</p></div><div className="bg-white p-8 rounded-3xl shadow-2xl border-4 border-slate-100 flex flex-col items-center"><QrCode size={200} className="text-slate-800 mb-4" /><p className="font-mono text-xs text-slate-400">TOKEN: {Math.random().toString(36).substr(2, 9).toUpperCase()}</p></div><div className="w-full space-y-3"><Button variant="success" className="w-full" onClick={() => notify("Simulación: Abriendo WhatsApp...", "info")}>COMPARTIR POR WHATSAPP</Button><Button variant="ghost" className="w-full" onClick={() => { setStep(1); setActiveScreen('home'); }}>VOLVER AL INICIO</Button></div></div>
+        )}
+    </div>
+  );
+};
+
+const ResidentAmenitiesScreen = ({ setActiveScreen, notify, addGlobalNotification }) => {
+    // 4. Recordatorios de Reservas
+    const handleBooking = (slot) => {
+        notify("Reserva Confirmada.\nSe ha enviado notificación a la Administración.");
+        addGlobalNotification({
+            type: 'amenity', title: 'Reserva Exitosa', message: `Has reservado el SUM para el horario: ${slot.time}.`, priority: 'normal'
+        });
+    };
+
+    return (
+      <div className="p-4 bg-white h-full overflow-y-auto flex flex-col">
+          <div className="flex items-center gap-4 mb-6"><button onClick={() => setActiveScreen('home')} className="p-2 bg-slate-100 rounded-full"><ArrowLeft size={20} className="text-slate-600" /></button><h2 className="font-black text-xl text-slate-800">RESERVAR SUM</h2></div>
+          <div className="flex-1 space-y-6"><div className="p-4 bg-orange-50 rounded-xl border border-orange-100 flex items-center gap-4"><CalendarCheck className="text-orange-600" size={32} /><div><h4 className="font-bold text-slate-800">Salón de Usos Múltiples</h4><p className="text-xs text-slate-500">Capacidad: 50 personas</p></div></div><div className="space-y-4"><h3 className="text-sm font-bold text-slate-600 uppercase">Horarios para Hoy</h3>{AMENITIES_SLOTS.map((slot, index) => (<div key={index} className={`p-4 rounded-lg border-2 flex justify-between items-center ${slot.status === 'available' ? 'border-slate-100 bg-white' : 'border-slate-100 bg-slate-50 opacity-60'}`}><div className="flex items-center gap-3"><Clock size={16} className="text-slate-400" /><span className={`font-bold ${slot.status === 'available' ? 'text-slate-800' : 'text-slate-400 line-through'}`}>{slot.time}</span></div>{slot.status === 'available' ? (<button onClick={() => handleBooking(slot)} className="px-3 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded hover:bg-emerald-200">RESERVAR</button>) : (<span className="text-xs font-bold text-red-400">OCUPADO</span>)}</div>))}</div></div>
+      </div>
+    );
+};
+
+const ResidentHomeTab = ({ setActiveScreen, notify, notifications, onLogout }) => {
+    const unreadCount = notifications.filter(n => !n.read).length;
+    const hasCritical = notifications.some(n => n.priority === 'critical' && !n.read);
+
+    return (
+      <div className="p-4 space-y-6 pb-24 bg-white h-full overflow-y-auto">
+        {/* Header con Campana de Notificaciones y Botón de Cerrar Sesión */}
+        <div className="flex justify-between items-start pt-2">
+            <div><BrandLogo /><p className="text-xs text-slate-400 mt-1 uppercase tracking-widest pl-1 font-bold">Barrio Los Robles</p></div>
+            <div className="flex gap-2">
+                <button onClick={() => setActiveScreen('notifications')} className={`p-2 rounded-full border shadow-sm relative transition-all ${hasCritical ? 'bg-red-50 border-red-200 animate-pulse-red' : 'bg-slate-50 border-slate-100'}`}>
+                    <Bell className={`w-6 h-6 ${hasCritical ? 'text-red-600' : 'text-slate-600'}`} />
+                    {unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white">
+                            {unreadCount}
+                        </span>
+                    )}
+                </button>
+                <button onClick={onLogout} className="bg-slate-50 p-2 rounded-full border border-slate-100 shadow-sm text-slate-600 hover:bg-slate-100 transition-colors" aria-label="Cerrar Sesión">
+                    <LogOut className="w-6 h-6" />
+                </button>
+            </div>
+        </div>
+
+        <div className="bg-gradient-to-r from-slate-800 to-slate-900 rounded-2xl p-6 text-white shadow-xl shadow-slate-200 relative overflow-hidden"><div className="absolute -right-4 -top-4 text-white opacity-10 transform rotate-12"><Shield size={120} /></div><h3 className="text-slate-300 text-xs uppercase tracking-wider mb-1 font-bold">Bienvenido</h3><h2 className="text-2xl font-black mb-4">Prop.</h2><div className="flex items-center gap-2"><span className="px-2 py-1 bg-emerald-500/20 text-emerald-400 text-[10px] font-bold rounded border border-emerald-500/30">ACCESO ACTIVO</span><span className="px-2 py-1 bg-white/10 text-slate-300 text-[10px] font-bold rounded border border-white/10">UF 402</span></div></div>
+        
+        {/* Alerta visible si hay evento crítico */}
+        {hasCritical && (
+            <div className="bg-red-600 text-white p-4 rounded-xl shadow-lg animate-pulse flex items-center gap-3 border-2 border-red-400" onClick={() => setActiveScreen('notifications')}>
+                <AlertTriangle size={32} />
+                <div>
+                    <h3 className="font-black text-lg">¡ALERTA EN CURSO!</h3>
+                    <p className="text-xs font-medium">Toque para ver instrucciones de emergencia.</p>
+                </div>
+            </div>
+        )}
+
+        <div className="bg-white rounded-xl p-1 shadow-sm border border-slate-100"><div className="bg-red-600 rounded-lg p-5 relative overflow-hidden group cursor-pointer shadow-lg shadow-red-100 active:scale-95 transition-transform" onClick={() => notify("SOS Enviado a Guardia y Central de Monitoreo", "error")}><div className="flex items-center justify-between relative z-10 text-white"><div><h3 className="font-black text-lg italic tracking-tight">SOS / EMERGENCIA</h3><p className="text-red-100 text-xs font-medium">Enviar alerta geolocalizada</p></div><div className="bg-white/20 p-3 rounded-full animate-pulse"><AlertTriangle size={28} /></div></div></div></div>
+        <div className="grid grid-cols-2 gap-4">
+            <button onClick={() => setActiveScreen('new_visit')} className="bg-white p-5 rounded-xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] border border-slate-100 flex flex-col justify-between h-36 active:scale-95 transition-all group hover:border-orange-500 border-2 border-transparent"><div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-colors"><UserPlus size={20} /></div><div className="text-left"><span className="block font-black text-slate-800 text-lg group-hover:text-orange-600">Nueva Visita</span><span className="text-xs text-slate-500 font-medium">Generar QR</span></div></button>
+            <button onClick={() => setActiveScreen('amenities')} className="bg-white p-5 rounded-xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] border border-slate-100 flex flex-col justify-between h-36 active:scale-95 transition-all group hover:border-orange-500 border-2 border-transparent"><div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center text-slate-600 group-hover:bg-slate-800 group-hover:text-white transition-colors"><Calendar size={20} /></div><div className="text-left"><span className="block font-black text-slate-800 text-lg group-hover:text-slate-700">Reservas</span><span className="text-xs text-slate-500 font-medium">SUM y Espacios</span></div></button>
+            <button onClick={() => setActiveScreen('service_notice')} className="col-span-2 bg-slate-800 p-5 rounded-xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] border border-slate-700 flex flex-row items-center justify-between h-24 active:scale-95 transition-all group hover:bg-slate-900"><div className="flex items-center gap-4"><div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center text-orange-500"><Truck size={24} /></div><div className="text-left"><span className="block font-black text-white text-lg">Avisar a Guardia</span><span className="text-xs text-slate-400 font-medium">Proveedor o Delivery en camino</span></div></div><ChevronRight className="text-slate-500 group-hover:text-white" /></button>
+        </div>
+        <div><h3 className="font-bold text-slate-400 mb-3 text-xs uppercase tracking-wider">Gestión Comunidad</h3><div className="space-y-3"><button onClick={() => notify("Alerta de Mascota enviada a toda la comunidad", "info")} className="w-full bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-center gap-4 hover:border-orange-200 transition-colors"><div className="bg-orange-50 p-2 rounded-lg text-orange-600"><Dog size={20} /></div><div className="text-left flex-1"><span className="font-bold text-slate-700 block text-sm">Mascotas</span><span className="text-xs text-slate-400">Reportar extravío</span></div><ChevronRight size={16} className="text-slate-300" /></button><button onClick={() => notify("Formulario de Reclamos abierto", "info")} className="w-full bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-center gap-4 hover:border-orange-200 transition-colors"><div className="bg-slate-50 p-2 rounded-lg text-slate-600"><FileText size={20} /></div><div className="text-left flex-1"><span className="font-bold text-slate-700 block text-sm">Reclamos</span><span className="text-xs text-slate-400">Mantenimiento</span></div><ChevronRight size={16} className="text-slate-300" /></button></div></div>
+      </div>
+    );
+};
+
+const EmergencyOverlay = ({ notifications, setActiveScreen }) => {
+    // Buscar la notificación de emergencia más reciente y no leída
+    const activeEmergency = notifications.find(n => (n.priority === 'critical' || n.type === 'alert') && !n.read);
+
+    if (!activeEmergency) return null;
+
+    const isRed = activeEmergency.color === 'red' || activeEmergency.priority === 'critical';
+    const bgColor = isRed ? 'bg-red-600' : 'bg-orange-500';
+    const borderColor = isRed ? 'border-red-400' : 'border-orange-400';
+    const animateClass = isRed ? 'animate-pulse-red' : 'animate-pulse-orange';
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 pointer-events-none">
+            <div className={`w-full max-w-sm ${bgColor} rounded-2xl p-6 shadow-2xl border-4 ${borderColor} ${animateClass} pointer-events-auto transform transition-all duration-500 translate-y-0`}>
+                <div className="flex justify-between items-start mb-4">
+                    <div className="p-3 bg-white/20 rounded-full">
+                        {isRed ? <Flame size={32} className="text-white" /> : <AlertTriangle size={32} className="text-white" />}
+                    </div>
+                    <button onClick={() => setActiveScreen('notifications')} className="text-white/80 hover:text-white text-xs font-bold underline">VER DETALLES</button>
+                </div>
+                <h3 className="text-2xl font-black text-white uppercase leading-none mb-2">{activeEmergency.title}</h3>
+                <p className="text-white/90 font-medium text-sm leading-relaxed mb-6">{activeEmergency.message}</p>
+                <div className="bg-black/20 rounded-lg p-3 text-center">
+                    <p className="text-xs text-white/70 font-bold uppercase tracking-widest">Protocolo Activo</p>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const ResidentView = ({ onBack, notify, notifications, markAsRead, addGlobalNotification }) => {
+  const [activeScreen, setActiveScreen] = useState('home');
+
+  return (
+    <>
+      <EmergencyOverlay notifications={notifications} setActiveScreen={setActiveScreen} />
+      {activeScreen === 'service_notice' ? <ResidentServiceNoticeScreen setActiveScreen={setActiveScreen} notify={notify} /> :
+       activeScreen === 'new_visit' ? <ResidentNewVisitScreen setActiveScreen={setActiveScreen} notify={notify} /> :
+       activeScreen === 'amenities' ? <ResidentAmenitiesScreen setActiveScreen={setActiveScreen} notify={notify} addGlobalNotification={addGlobalNotification} /> :
+       activeScreen === 'notifications' ? <ResidentNotificationCenter notifications={notifications} setActiveScreen={setActiveScreen} markAsRead={markAsRead} /> :
+       <ResidentHomeTab setActiveScreen={setActiveScreen} notify={notify} notifications={notifications} onLogout={onBack} />}
+    </>
+  );
+};
+
+// --- AUTH SCREEN ---
+const LoginScreen = ({ role, onLoginSuccess, onBack }) => {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+    const validCreds = CREDENTIALS[role];
+    if (username === validCreds.user && password === validCreds.pass) { onLoginSuccess(validCreds.name); } 
+    else { setError('Credenciales inválidas. Intente nuevamente.'); }
+  };
+
+  const getRoleTexts = () => {
+    switch(role) {
+      case 'guard': return { title: "ACCESO OPERATIVO", subtitle: "Guardias de Seguridad" };
+      case 'resident': return { title: "ACCESO RESIDENTES", subtitle: "Bienvenido a Casa" };
+      case 'localAdmin': return { title: "ADMINISTRACIÓN LOCAL", subtitle: "Gestión del Barrio" };
+      case 'admin': return { title: "SUPER ADMIN", subtitle: "Gestión Global del Sistema" };
+      default: return { title: "LOGIN", subtitle: "" };
+    }
+  };
+  const texts = getRoleTexts();
+
+  return (
+    <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 font-sans relative overflow-hidden">
+      <div className="absolute top-0 w-full h-2 bg-orange-600"></div><div className="absolute -right-20 -top-20 w-96 h-96 bg-orange-50 rounded-full blur-3xl z-0"></div>
+      <div className="w-full max-w-md bg-white p-10 rounded-2xl shadow-2xl border border-slate-100 relative z-10">
+        <button onClick={onBack} className="absolute top-6 left-6 text-slate-400 hover:text-slate-600 transition-colors"><ArrowLeft size={24} /></button>
+        <div className="text-center mb-10 mt-4"><div className="flex justify-center mb-6"><div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 shadow-inner">{role === 'guard' && <Shield size={48} className="text-orange-600" />}{role === 'resident' && <User size={48} className="text-orange-600" />}{role === 'localAdmin' && <Building size={48} className="text-orange-600" />}{role === 'admin' && <BarChart3 size={48} className="text-orange-600" />}</div></div><BrandLogo /><h2 className="text-xl font-black uppercase tracking-wide text-slate-800 mt-4">{texts.title}</h2><p className="text-sm text-slate-500 font-medium">{texts.subtitle}</p></div>
+        <form onSubmit={handleLogin} className="space-y-6"><div className="space-y-2"><label className="text-xs font-bold uppercase tracking-wider text-slate-700">Usuario</label><div className="relative"><User className="absolute left-3 top-3.5 w-5 h-5 text-slate-400" /><input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-300 bg-slate-50 text-slate-900 focus:border-orange-500 outline-none transition-all" placeholder="Usuario" /></div></div><div className="space-y-2"><label className="text-xs font-bold uppercase tracking-wider text-slate-700">Contraseña</label><div className="relative"><Key className="absolute left-3 top-3.5 w-5 h-5 text-slate-400" /><input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} className="w-full pl-10 pr-12 py-3 rounded-lg border border-slate-300 bg-slate-50 text-slate-900 focus:border-orange-500 outline-none transition-all" placeholder="••••••••" /><button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-3.5 text-slate-400 hover:text-slate-600">{showPassword ? <EyeOff size={20}/> : <Eye size={20}/>}</button></div></div>{error && <div className="p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm flex items-center gap-3 font-medium rounded-r"><AlertTriangle size={18} /> {error}</div>}<Button variant="primary" className="w-full py-4 text-base shadow-xl shadow-orange-200" onClick={handleLogin}>INGRESAR AHORA</Button></form>
+      </div>
+      <p className="mt-8 text-slate-400 text-xs font-medium">© 2026 Blindaje S.A.</p>
+    </div>
+  );
+};
+
+const LocalAdminView = ({ onBack, currentUser, notify, addGlobalNotification }) => {
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const SidebarItem = ({ icon: Icon, label, tabId }) => (
+    <div onClick={() => setActiveTab(tabId)} className={`p-3 flex items-center gap-3 cursor-pointer transition-all font-medium rounded-lg mb-1 ${activeTab === tabId ? 'bg-orange-50 text-orange-700 border-l-4 border-orange-600' : 'hover:bg-slate-50 hover:text-slate-900 text-slate-500 border-l-4 border-transparent'}`}><Icon size={20} /> <span>{label}</span></div>
+  );
+
+  // 3. Alertas Incidentes (Desde Admin)
+  const sendBroadcast = () => { 
+      addGlobalNotification({ 
+          type: 'alert', title: 'Aviso de Administración', message: 'Se informa corte programado de agua de 14 a 16hs.', priority: 'normal' 
+      });
+      notify("Comunicado enviado a todos los residentes", "info"); 
+  };
+
+  return (
+    <div className="h-full bg-slate-50 flex flex-col md:flex-row font-sans">
+      <div className="w-full md:w-64 bg-white border-r border-slate-200 text-slate-600 flex flex-col z-20"><div className="p-6 border-b border-slate-100"><BrandLogo /></div><div className="p-4 border-b border-slate-100 bg-slate-50/50"><p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Propiedad</p><h3 className="font-black text-slate-800 text-lg leading-tight">Barrio Privado<br/>Los Robles</h3></div><nav className="flex-1 p-4 overflow-y-auto"><p className="px-3 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 mt-2">Módulos de Gestión</p><SidebarItem icon={FileBarChart} label="Dashboard" tabId="dashboard" /><SidebarItem icon={Users} label="Visitas" tabId="visits" /><SidebarItem icon={Truck} label="Proveedores" tabId="suppliers" /><SidebarItem icon={AlertTriangle} label="Incidentes" tabId="incidents" /><SidebarItem icon={CalendarCheck} label="Reservas SUM" tabId="reservations" /><SidebarItem icon={FileText} label="Reportes" tabId="reports" /></nav><div className="p-4 border-t border-slate-100"><div className="flex items-center gap-3 mb-4"><div className="w-8 h-8 rounded bg-orange-600 flex items-center justify-center font-bold text-white shadow-md">GL</div><div><p className="text-xs font-bold text-slate-700">Gerencia</p><p className="text-[10px] text-slate-400">Administrador Local</p></div></div><Button variant="secondary" className="w-full" onClick={onBack} size="sm"><LogOut size={14} /> Cerrar Sesión</Button></div></div>
+      <div className="flex-1 overflow-y-auto bg-slate-50 p-8"><header className="flex justify-between items-center mb-8"><div><h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">{activeTab === 'dashboard' ? 'Resumen Operativo' : activeTab === 'reports' ? 'Centro de Reportes' : activeTab}</h2><p className="text-sm text-slate-500 font-medium">Vista de Administración Local • {new Date().toLocaleDateString()}</p></div>{activeTab !== 'reports' && (<div className="flex gap-2"><Button variant="outline" size="sm"><Search size={16} /> Buscar</Button><Button variant="primary" size="sm" onClick={sendBroadcast}><Send size={16} /> Enviar Comunicado</Button></div>)}</header>
+        {activeTab === 'reports' && <ReportsModule notify={notify} />}
+        {activeTab === 'dashboard' && (
+            <div className="space-y-6"><div className="grid grid-cols-1 md:grid-cols-4 gap-6"><Card className="p-5 border-l-4 border-l-orange-500"><div className="flex justify-between items-start mb-2"><p className="text-slate-500 text-xs font-bold uppercase">Visitas Hoy</p><Users size={18} className="text-orange-500" /></div><h3 className="text-3xl font-black text-slate-800">142</h3><p className="text-xs text-emerald-600 mt-1 font-bold">En curso: 12</p></Card><Card className="p-5 border-l-4 border-l-blue-500"><div className="flex justify-between items-start mb-2"><p className="text-slate-500 text-xs font-bold uppercase">Proveedores</p><Truck size={18} className="text-blue-500" /></div><h3 className="text-3xl font-black text-slate-800">8</h3><p className="text-xs text-slate-400 mt-1 font-bold">Ingresados hoy</p></Card><Card className="p-5 border-l-4 border-l-red-500"><div className="flex justify-between items-start mb-2"><p className="text-slate-500 text-xs font-bold uppercase">Incidentes</p><AlertTriangle size={18} className="text-red-500" /></div><h3 className="text-3xl font-black text-slate-800">3</h3><p className="text-xs text-red-600 mt-1 font-bold">1 Alta Prioridad</p></Card><Card className="p-5 border-l-4 border-l-emerald-500"><div className="flex justify-between items-start mb-2"><p className="text-slate-500 text-xs font-bold uppercase">SUM</p><CalendarCheck size={18} className="text-emerald-500" /></div><h3 className="text-3xl font-black text-slate-800">1</h3><p className="text-xs text-slate-400 mt-1 font-bold">Reserva activa</p></Card></div><div className="grid grid-cols-1 lg:grid-cols-2 gap-6"><Card className="p-0"><div className="px-6 py-4 border-b border-slate-100 bg-white"><h3 className="font-bold text-sm text-slate-800 uppercase">Actividad Reciente</h3></div><div className="divide-y divide-slate-100">{AUTHORIZED_VISITS_DB.slice(0,3).map(visit => (<div key={visit.id} className="px-6 py-3 flex justify-between items-center hover:bg-slate-50"><div><p className="font-bold text-sm text-slate-700">Ingreso Visita: {visit.visitor}</p><p className="text-xs text-slate-500">A unidad: {visit.host}</p></div><span className="text-xs font-bold bg-emerald-100 text-emerald-700 px-2 py-1 rounded">{visit.time}</span></div>))}</div></Card><Card className="p-0"><div className="px-6 py-4 border-b border-slate-100 bg-white"><h3 className="font-bold text-sm text-slate-800 uppercase">Novedades de Guardia</h3></div><div className="p-6 text-center text-slate-400 text-sm italic">No hay novedades críticas reportadas en la última hora.</div></Card></div></div>
+        )}
+        {activeTab === 'visits' && (<Card className="p-0"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-slate-500 uppercase text-xs font-bold"><tr><th className="px-6 py-3">Hora</th><th className="px-6 py-3">Visitante</th><th className="px-6 py-3">DNI</th><th className="px-6 py-3">Destino</th><th className="px-6 py-3">Patente</th><th className="px-6 py-3">Estado</th></tr></thead><tbody className="divide-y divide-slate-100">{AUTHORIZED_VISITS_DB.map(v => (<tr key={v.id} className="hover:bg-slate-50"><td className="px-6 py-4 font-mono text-slate-500">{v.time}</td><td className="px-6 py-4 font-bold text-slate-700">{v.visitor}</td><td className="px-6 py-4 text-slate-600">{v.dni}</td><td className="px-6 py-4 text-slate-600">{v.host}</td><td className="px-6 py-4 uppercase font-mono text-slate-500">{v.plate}</td><td className="px-6 py-4"><span className={`px-2 py-1 rounded text-xs font-bold ${v.status === 'Ingresó' ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}`}>{v.status}</span></td></tr>))}</tbody></table></Card>)}
+        {activeTab === 'suppliers' && (<div className="space-y-4"><div className="flex gap-2 mb-4"><input className="p-2 border rounded-lg text-sm w-64" placeholder="Buscar proveedor..." /><Button size="sm" variant="secondary">Filtrar</Button></div><Card className="p-0"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-slate-500 uppercase text-xs font-bold"><tr><th className="px-6 py-3">Empresa</th><th className="px-6 py-3">Personal</th><th className="px-6 py-3">Rubro</th><th className="px-6 py-3">Servicio</th><th className="px-6 py-3">Patente</th></tr></thead><tbody className="divide-y divide-slate-100">{SUPPLIERS_DB.map((s, i) => (<tr key={i} className="hover:bg-slate-50"><td className="px-6 py-4 font-bold text-slate-700">{s.company}</td><td className="px-6 py-4 text-slate-600">{s.name}<br/><span className="text-xs text-slate-400">DNI: {s.dni}</span></td><td className="px-6 py-4"><span className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs font-bold">{s.category}</span></td><td className="px-6 py-4 text-slate-600">{s.serviceType || '-'}</td><td className="px-6 py-4 font-mono text-slate-500 uppercase">{s.plate}</td></tr>))}</tbody></table></Card></div>)}
+        {activeTab === 'incidents' && (<div className="grid grid-cols-1 gap-4">{INCIDENTS_DB.map(inc => (<Card key={inc.id} className="p-4 border-l-4 border-l-red-500 flex justify-between items-center"><div className="flex items-start gap-4"><div className="p-3 bg-red-50 rounded-full text-red-600"><AlertTriangle size={24} /></div><div><h4 className="font-bold text-slate-800 text-lg">{inc.type}</h4><p className="text-slate-600">{inc.detail}</p><div className="flex gap-3 mt-2 text-xs text-slate-500 font-bold uppercase"><span className="flex items-center gap-1"><Clock size={12} /> {inc.time}</span><span className="flex items-center gap-1"><MapPin size={12} /> {inc.location}</span></div></div></div><div className="text-right"><span className={`px-3 py-1 rounded-full text-xs font-black uppercase ${inc.status === 'Resuelto' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{inc.status}</span><p className="text-xs text-slate-400 mt-2 font-bold uppercase">Prioridad {inc.severity}</p></div></Card>))}</div>)}
+        {activeTab === 'reservations' && (<div className="space-y-6"><Card className="p-6"><div className="flex items-center gap-4 mb-6"><div className="p-3 bg-orange-100 text-orange-600 rounded-lg"><CalendarCheck size={32} /></div><div><h3 className="text-xl font-bold text-slate-800">Estado del S.U.M.</h3><p className="text-slate-500">Capacidad: 50 Personas • Limpieza incluida</p></div></div><div className="grid grid-cols-1 md:grid-cols-2 gap-4">{AMENITIES_SLOTS.map((slot, index) => (<div key={index} className={`p-4 rounded-lg border-2 flex justify-between items-center ${slot.status === 'booked' ? 'border-red-100 bg-red-50' : 'border-emerald-100 bg-emerald-50'}`}><div className="flex items-center gap-3"><Clock size={20} className={slot.status === 'booked' ? 'text-red-400' : 'text-emerald-500'} /><span className="font-bold text-slate-700 text-lg">{slot.time}</span></div><div className="text-right"><span className={`text-xs font-black uppercase px-2 py-1 rounded ${slot.status === 'booked' ? 'bg-red-200 text-red-800' : 'bg-emerald-200 text-emerald-800'}`}>{slot.status === 'booked' ? 'OCUPADO' : 'DISPONIBLE'}</span>{slot.status === 'booked' && <p className="text-xs text-slate-600 mt-1 font-bold">{slot.by}</p>}</div></div>))}</div></Card></div>)}
+      </div>
+    </div>
+  );
+};
+
+const AdminView = ({ onBack, notify }) => {
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const SidebarItem = ({ icon: Icon, label, tabId }) => (
+    <div onClick={() => setActiveTab(tabId)} className={`p-3 flex items-center gap-3 cursor-pointer transition-all font-medium rounded-lg mb-1 ${activeTab === tabId ? 'bg-orange-50 text-orange-700 border-l-4 border-orange-600' : 'hover:bg-slate-50 hover:text-slate-900 text-slate-500 border-l-4 border-transparent'}`}><Icon size={20} /> <span>{label}</span></div>
+  );
+  return (
+    <div className="h-full bg-slate-50 flex flex-col md:flex-row font-sans">
+      <div className="w-full md:w-64 bg-white border-r border-slate-200 text-slate-600 flex flex-col z-20"><div className="p-6 border-b border-slate-100"><BrandLogo /></div><nav className="flex-1 p-4 overflow-y-auto"><p className="px-3 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 mt-4">Gestión Global</p><SidebarItem icon={BarChart3} label="Dashboard" tabId="dashboard" /><SidebarItem icon={Users} label="Residentes" tabId="residents" /><SidebarItem icon={MapPin} label="Rondas & SLA" tabId="rounds" /><SidebarItem icon={FileText} label="Reportes" tabId="reports" /><p className="px-3 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 mt-6">Hardware</p><SidebarItem icon={Video} label="Cámaras LPR" tabId="lpr_config" /></nav><div className="p-4 border-t border-slate-100"><Button variant="secondary" className="w-full" onClick={onBack} size="sm"><LogOut size={14} /> Cerrar Sesión</Button></div></div>
+      <div className="flex-1 overflow-y-auto bg-slate-50"><header className="bg-white px-8 py-5 flex justify-between items-center border-b border-slate-200 shadow-sm sticky top-0 z-10"><div><h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">{activeTab === 'dashboard' ? 'Panel de Control General' : activeTab === 'reports' ? 'Reportes Globales' : activeTab}</h2><p className="text-sm text-slate-500 flex items-center gap-2 font-medium"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> Estado del Sistema: Óptimo</p></div><div className="flex items-center gap-4"><div className="bg-white p-2 rounded-full border border-slate-200 relative shadow-sm"><Bell className="text-slate-500" size={20} /><span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-white"></span></div></div></header>
+        <div className="p-8">
+            {activeTab === 'reports' && <ReportsModule notify={notify} />}
+            {activeTab === 'dashboard' && (<><div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8"><Card className="p-5 border-l-4 border-l-orange-500"><div className="flex justify-between items-start mb-2"><p className="text-slate-500 text-xs font-bold uppercase">Visitas Activas</p><Users size={18} className="text-orange-500" /></div><h3 className="text-3xl font-black text-slate-800">142</h3><p className="text-xs text-emerald-600 mt-1 flex items-center font-bold">▲ 12% vs ayer</p></Card><Card className="p-5 border-l-4 border-l-slate-600"><div className="flex justify-between items-start mb-2"><p className="text-slate-500 text-xs font-bold uppercase">Cumplimiento</p><Activity size={18} className="text-slate-600" /></div><h3 className="text-3xl font-black text-slate-800">98.5%</h3><p className="text-xs text-emerald-600 mt-1 font-bold">SLA Rondas</p></Card><Card className="p-5 border-l-4 border-l-red-500"><div className="flex justify-between items-start mb-2"><p className="text-slate-500 text-xs font-bold uppercase">Alertas</p><AlertTriangle size={18} className="text-red-500" /></div><h3 className="text-3xl font-black text-slate-800">3</h3><p className="text-xs text-red-600 mt-1 font-bold">Pendientes de revisión</p></Card><Card className="p-5 border-l-4 border-l-blue-500"><div className="flex justify-between items-start mb-2"><p className="text-slate-500 text-xs font-bold uppercase">Reservas SUM</p><Calendar size={18} className="text-blue-500" /></div><h3 className="text-3xl font-black text-slate-800">8</h3><p className="text-xs text-slate-400 mt-1 font-bold">Para hoy</p></Card></div><div className="grid grid-cols-1 lg:grid-cols-3 gap-6"><Card className="lg:col-span-2 p-0"><div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white"><h3 className="font-bold text-sm text-slate-800 uppercase tracking-wide">Últimos Ingresos Globales</h3><span className="text-xs text-orange-600 font-bold cursor-pointer hover:underline">VER REPORTE</span></div><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-slate-500 uppercase text-xs font-bold"><tr><th className="px-6 py-3">Hora</th><th className="px-6 py-3">Tipo</th><th className="px-6 py-3">Detalle</th><th className="px-6 py-3">Estado</th></tr></thead><tbody className="divide-y divide-slate-100"><tr className="hover:bg-slate-50 transition-colors"><td className="px-6 py-4 font-mono text-xs text-slate-500">14:32:01</td><td className="px-6 py-4"><span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide">Visita</span></td><td className="px-6 py-4 font-medium text-slate-700">Juan Pérez <span className="text-slate-400 font-normal">→ UF 402</span></td><td className="px-6 py-4 text-emerald-600 font-bold text-xs">AUTORIZADO</td></tr></tbody></table></Card><Card className="p-0 flex flex-col"><div className="px-6 py-4 border-b border-slate-100 bg-white"><h3 className="font-bold text-sm text-slate-800 uppercase tracking-wide">Mapa de Calor</h3></div><div className="flex-1 bg-slate-50 p-6 flex flex-col items-center justify-center min-h-[200px] relative"><MapPin size={48} className="text-slate-300 mb-2" /><p className="text-slate-400 text-xs text-center font-medium">Visualización Georreferenciada<br/>(Datos en tiempo real)</p></div></Card></div></>)}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default function App() {
+  const [currentRole, setCurrentRole] = useState(null);
+  const [currentUser, setCurrentUser] = useState('');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [notification, setNotification] = useState(null);
+  const [globalNotifications, setGlobalNotifications] = useState(INITIAL_NOTIFICATIONS);
+
+  const showNotification = (message, type = 'success') => { setNotification({ message, type }); };
+  const resetAuth = () => { setIsAuthenticated(false); setCurrentRole(null); setCurrentUser(''); setNotification(null); };
+
+  // --- FUNCIÓN CENTRALIZADA PARA AGREGAR NOTIFICACIONES ---
+  const addGlobalNotification = (newNotif) => {
+      const notifObject = {
+          id: Date.now(),
+          date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          read: false,
+          ...newNotif
+      };
+      setGlobalNotifications(prev => [notifObject, ...prev]);
+  };
+
+  const markAsRead = (id) => {
+      setGlobalNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  };
+
+  const renderContent = () => {
+    if (currentRole && !isAuthenticated) return <LoginScreen role={currentRole} onLoginSuccess={(name) => { setIsAuthenticated(true); setCurrentUser(name); }} onBack={() => setCurrentRole(null)} />;
+    if (currentRole && isAuthenticated) {
+      return (
+          <div className="h-screen w-full bg-white overflow-hidden font-sans">
+              {currentRole === 'guard' && <GuardView onBack={resetAuth} currentUser={currentUser} notify={showNotification} addGlobalNotification={addGlobalNotification} />}
+              {currentRole === 'resident' && <ResidentView onBack={resetAuth} notify={showNotification} notifications={globalNotifications} markAsRead={markAsRead} addGlobalNotification={addGlobalNotification} />}
+              {currentRole === 'localAdmin' && <LocalAdminView onBack={resetAuth} currentUser={currentUser} notify={showNotification} addGlobalNotification={addGlobalNotification} />}
+              {currentRole === 'admin' && <AdminView onBack={resetAuth} notify={showNotification} />}
+          </div>
+      );
+    }
+    return (
+        <div className="min-h-screen bg-white flex items-center justify-center p-4 font-sans relative overflow-hidden">
+          <div className="absolute top-0 w-full h-2 bg-orange-600 z-10"></div>
+          <div className="max-w-4xl w-full text-center space-y-10 relative z-10">
+              <div className="space-y-4 flex flex-col items-center animate-fade-in-up"><div className="bg-white p-6 rounded-3xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] border border-slate-100 mb-2"><Shield className="w-20 h-20 text-orange-600 fill-orange-600" strokeWidth={1.5} /></div><div><h1 className="text-5xl md:text-6xl font-black text-slate-800 tracking-tighter mb-2">BLINDAJE<span className="text-orange-600">DIGITAL</span></h1><p className="text-slate-500 text-lg tracking-wide uppercase font-bold">Plataforma Integral de Seguridad</p></div></div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <button onClick={() => setCurrentRole('guard')} className="group bg-white hover:bg-orange-50 border-2 border-slate-100 hover:border-orange-500 p-6 rounded-2xl transition-all text-left relative overflow-hidden shadow-lg hover:shadow-2xl h-full flex flex-col justify-between"><div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mb-4 text-orange-600 font-bold group-hover:scale-110 transition-transform"><User size={24} /></div><div className="mt-auto"><h3 className="text-lg font-black text-slate-800 mb-2 uppercase leading-none">Guardia Operativo</h3><p className="text-slate-500 text-xs font-medium">Control de accesos y rondas.</p></div></button>
+                  <button onClick={() => setCurrentRole('resident')} className="group bg-white hover:bg-orange-50 border-2 border-slate-100 hover:border-orange-500 p-6 rounded-2xl transition-all text-left relative overflow-hidden shadow-lg hover:shadow-2xl h-full flex flex-col justify-between"><div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center mb-4 text-slate-600 font-bold group-hover:scale-110 transition-transform"><User size={24} /></div><div className="mt-auto"><h3 className="text-lg font-black text-slate-800 mb-2 uppercase leading-none">App Residente</h3><p className="text-slate-500 text-xs font-medium">Visitas, QR y amenities.</p></div></button>
+                  <button onClick={() => setCurrentRole('localAdmin')} className="group bg-white hover:bg-orange-50 border-2 border-slate-100 hover:border-orange-500 p-6 rounded-2xl transition-all text-left relative overflow-hidden shadow-lg hover:shadow-2xl h-full flex flex-col justify-between"><div className="w-12 h-12 bg-slate-800 rounded-xl flex items-center justify-center mb-4 text-white font-bold group-hover:scale-110 transition-transform"><Building size={24} /></div><div className="mt-auto"><h3 className="text-lg font-black text-slate-800 mb-2 uppercase leading-none">Admin Local</h3><p className="text-slate-500 text-xs font-medium">Gestión del Barrio.</p></div></button>
+                  <button onClick={() => setCurrentRole('admin')} className="group bg-white hover:bg-orange-50 border-2 border-slate-100 hover:border-orange-500 p-6 rounded-2xl transition-all text-left relative overflow-hidden shadow-lg hover:shadow-2xl h-full flex flex-col justify-between"><div className="w-12 h-12 bg-slate-800 rounded-xl flex items-center justify-center mb-4 text-white font-bold group-hover:scale-110 transition-transform"><BarChart3 size={24} /></div><div className="mt-auto"><h3 className="text-lg font-black text-slate-800 mb-2 uppercase leading-none">Super Admin</h3><p className="text-slate-500 text-xs font-medium">Auditoría global.</p></div></button>
+              </div>
+              <p className="text-slate-400 text-xs font-medium">© 2026 Blindaje S.A. • Mendoza, Argentina</p>
+          </div>
+        </div>
+    );
+  };
+
+  return (
+    <>
+      <GlobalStyles />
+      {notification && <Toast message={notification.message} type={notification.type} onClose={() => setNotification(null)} />}
+      {renderContent()}
+    </>
+  );
+};

@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ESTILOS DE RESETEO OBLIGATORIOS */
+/* Esto elimina los márgenes por defecto de Vite y asegura pantalla completa */
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  background-color: #f8fafc; /* Coincide con el bg-slate-50 */
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+  isolation: isolate; /* Crea un nuevo contexto de apilamiento */
+}
+
+/* Opcional: Para mejorar el scroll en móviles */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
