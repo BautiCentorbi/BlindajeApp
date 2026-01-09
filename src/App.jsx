@@ -325,46 +325,148 @@ const ReportsModule = ({ notify }) => {
   );
 };
 
-// --- COMPONENTES FALTANTES RECONSTRUIDOS PARA ESTABILIDAD ---
+// --- MÓDULOS DE GUARDIA RECONSTRUIDOS Y FUNCIONALES ---
 
-const GuardSupplierWizard = ({ setScreen, notify }) => (
-  <div className="flex flex-col h-full bg-slate-50 text-slate-800">
-     <div className="p-4 border-b border-slate-200 bg-white flex items-center gap-4 shadow-sm">
-        <Button variant="secondary" size="sm" onClick={() => setScreen('dashboard')}><ArrowLeft className="w-4 h-4" /> VOLVER</Button>
-        <h2 className="font-black text-xl text-slate-800">INGRESO DE PROVEEDORES</h2>
-     </div>
-     <div className="p-8 flex items-center justify-center flex-col h-full text-slate-400">
-        <Truck size={48} className="mb-4" />
-        <p>Módulo de Proveedores Activo. Configurar detalles.</p>
-     </div>
-  </div>
-);
+// Módulo de Proveedores
+const GuardSupplierWizard = ({ setScreen, notify }) => {
+  const [step, setStep] = useState('type'); // type, scan, details
+  const [data, setData] = useState({});
 
-const GuardPackageScreen = ({ setScreen, notify }) => (
-  <div className="flex flex-col h-full bg-slate-50 text-slate-800">
-     <div className="p-4 border-b border-slate-200 bg-white flex items-center gap-4 shadow-sm">
-        <Button variant="secondary" size="sm" onClick={() => setScreen('dashboard')}><ArrowLeft className="w-4 h-4" /> VOLVER</Button>
-        <h2 className="font-black text-xl text-slate-800">GESTIÓN DE PAQUETERÍA</h2>
-     </div>
-     <div className="p-8 flex items-center justify-center flex-col h-full text-slate-400">
-        <Package size={48} className="mb-4" />
-        <p>Módulo de Paquetería Activo. Configurar detalles.</p>
-     </div>
-  </div>
-);
+  return (
+    <div className="flex flex-col h-full bg-slate-50 text-slate-800 animate-fade-in-up">
+       <div className="p-4 border-b border-slate-200 bg-white flex items-center gap-4 shadow-sm">
+          <Button variant="secondary" size="sm" onClick={() => setScreen('dashboard')}><ArrowLeft className="w-4 h-4" /> VOLVER</Button>
+          <h2 className="font-black text-xl text-slate-800">INGRESO DE PROVEEDORES</h2>
+       </div>
+       
+       <div className="p-6 flex-1 overflow-y-auto">
+          {step === 'type' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
+                <button onClick={() => setStep('details')} className="bg-white p-8 rounded-xl shadow-sm border-2 border-slate-100 hover:border-orange-500 flex flex-col items-center gap-4 group transition-all">
+                    <div className="bg-orange-50 p-4 rounded-full text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-colors">
+                        <Truck size={40} />
+                    </div>
+                    <span className="font-black text-lg text-slate-700">Proveedor Regular</span>
+                </button>
+                <button onClick={() => setStep('details')} className="bg-white p-8 rounded-xl shadow-sm border-2 border-slate-100 hover:border-blue-500 flex flex-col items-center gap-4 group transition-all">
+                    <div className="bg-blue-50 p-4 rounded-full text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                        <Bike size={40} />
+                    </div>
+                    <span className="font-black text-lg text-slate-700">Delivery / Moto</span>
+                </button>
+            </div>
+          )}
 
-const GuardRoundsScreen = ({ setScreen, notify }) => (
-  <div className="flex flex-col h-full bg-slate-50 text-slate-800">
-     <div className="p-4 border-b border-slate-200 bg-white flex items-center gap-4 shadow-sm">
-        <Button variant="secondary" size="sm" onClick={() => setScreen('dashboard')}><ArrowLeft className="w-4 h-4" /> VOLVER</Button>
-        <h2 className="font-black text-xl text-slate-800">RONDAS ACTIVAS</h2>
-     </div>
-     <div className="p-8 flex items-center justify-center flex-col h-full text-slate-400">
-        <MapPin size={48} className="mb-4" />
-        <p>Módulo de Rondas Activo. Configurar detalles.</p>
-     </div>
-  </div>
-);
+          {step === 'details' && (
+             <div className="max-w-xl mx-auto bg-white p-6 rounded-xl shadow-lg border border-slate-100 space-y-4">
+                <h3 className="font-bold text-lg border-b pb-2">Datos del Ingreso</h3>
+                <div>
+                    <label className="text-xs font-bold uppercase text-slate-500">DNI Conductor</label>
+                    <input className="w-full p-3 border rounded-lg bg-slate-50" placeholder="Escanee o escriba DNI" />
+                </div>
+                <div>
+                    <label className="text-xs font-bold uppercase text-slate-500">Empresa / Rubro</label>
+                    <input className="w-full p-3 border rounded-lg bg-slate-50" placeholder="Ej: Coca Cola" />
+                </div>
+                <div>
+                    <label className="text-xs font-bold uppercase text-slate-500">Destino (Unidad)</label>
+                    <input className="w-full p-3 border rounded-lg bg-slate-50" placeholder="UF..." />
+                </div>
+                <Button className="w-full mt-4" onClick={() => { notify('Proveedor Registrado Correctamente'); setScreen('dashboard'); }}>REGISTRAR INGRESO</Button>
+             </div>
+          )}
+       </div>
+    </div>
+  );
+};
+
+// Módulo de Paquetería
+const GuardPackageScreen = ({ setScreen, notify }) => {
+  const [packages, setPackages] = useState([
+      {id: 1, unit: 'UF 402', type: 'Mercado Libre', status: 'pending'},
+      {id: 2, unit: 'UF 105', type: 'Amazon', status: 'pending'}
+  ]);
+
+  const receivePackage = () => {
+      setPackages([...packages, { id: Date.now(), unit: 'UF ???', type: 'Nuevo Paquete', status: 'pending'}]);
+      notify("Paquete ingresado al sistema", "success");
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-slate-50 text-slate-800 animate-fade-in-up">
+       <div className="p-4 border-b border-slate-200 bg-white flex items-center justify-between gap-4 shadow-sm">
+          <div className="flex items-center gap-4">
+            <Button variant="secondary" size="sm" onClick={() => setScreen('dashboard')}><ArrowLeft className="w-4 h-4" /> VOLVER</Button>
+            <h2 className="font-black text-xl text-slate-800">GESTIÓN DE PAQUETERÍA</h2>
+          </div>
+          <Button size="sm" onClick={receivePackage}>+ RECIBIR</Button>
+       </div>
+       <div className="p-6 flex-1 overflow-y-auto">
+          {packages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-slate-400">
+                  <Package size={48} className="mb-4 opacity-50" />
+                  <p>No hay paquetes en guardia.</p>
+              </div>
+          ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {packages.map(p => (
+                      <div key={p.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
+                          <div className="flex items-center gap-3">
+                              <div className="bg-emerald-100 p-2 rounded-full text-emerald-600"><Package size={20} /></div>
+                              <div>
+                                  <p className="font-bold text-slate-800">{p.type}</p>
+                                  <p className="text-xs text-slate-500 font-bold">{p.unit}</p>
+                              </div>
+                          </div>
+                          <button className="text-xs font-bold text-orange-600 bg-orange-50 px-2 py-1 rounded hover:bg-orange-100" onClick={() => notify(`Notificación enviada a ${p.unit}`)}>AVISAR</button>
+                      </div>
+                  ))}
+              </div>
+          )}
+       </div>
+    </div>
+  );
+};
+
+// Módulo de Rondas
+const GuardRoundsScreen = ({ setScreen, notify }) => {
+  const [points, setPoints] = useState(ROUND_POINTS_DATA);
+
+  const checkPoint = (id) => {
+      setPoints(points.map(p => p.id === id ? { ...p, status: 'checked', time: new Date().toLocaleTimeString() } : p));
+      notify("Punto de control verificado.", "success");
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-slate-50 text-slate-800 animate-fade-in-up">
+       <div className="p-4 border-b border-slate-200 bg-white flex items-center gap-4 shadow-sm">
+          <Button variant="secondary" size="sm" onClick={() => setScreen('dashboard')}><ArrowLeft className="w-4 h-4" /> VOLVER</Button>
+          <h2 className="font-black text-xl text-slate-800">RONDAS ACTIVAS</h2>
+       </div>
+       <div className="p-6 flex-1 overflow-y-auto">
+          <div className="max-w-2xl mx-auto space-y-4">
+              {points.map(point => (
+                  <div key={point.id} className={`p-4 rounded-xl border-2 flex justify-between items-center transition-all ${point.status === 'checked' ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-200'}`}>
+                      <div className="flex items-center gap-4">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${point.status === 'checked' ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500'}`}>
+                              {point.id}
+                          </div>
+                          <div>
+                              <h4 className={`font-bold ${point.status === 'checked' ? 'text-emerald-900' : 'text-slate-800'}`}>{point.name}</h4>
+                              <p className="text-xs text-slate-500">{point.status === 'checked' ? `Verificado a las ${point.time}` : 'Pendiente de verificación'}</p>
+                          </div>
+                      </div>
+                      {point.status === 'pending' && (
+                          <Button size="sm" onClick={() => checkPoint(point.id)}>MARCAR</Button>
+                      )}
+                      {point.status === 'checked' && <CheckCircle className="text-emerald-500" />}
+                  </div>
+              ))}
+          </div>
+       </div>
+    </div>
+  );
+};
 
 // --- PANTALLAS EXTRAÍDAS DE GUARD VIEW ---
 
@@ -403,7 +505,7 @@ const GuardEmergencyScreen = ({ setScreen, notify, addGlobalNotification }) => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-900 text-white relative">
+    <div className="flex flex-col h-full bg-slate-900 text-white relative animate-fade-in-up">
         {/* Header */}
         <div className="p-4 border-b border-slate-700 flex items-center gap-4 shadow-sm z-10 bg-slate-900">
             <Button variant="secondary" size="sm" onClick={() => setScreen('dashboard')} className="border-slate-600 text-slate-300 hover:text-white hover:bg-slate-700"><ArrowLeft className="w-4 h-4" /> VOLVER</Button>
@@ -638,6 +740,8 @@ const GuardView = ({ onBack, currentUser, notify, addGlobalNotification }) => {
     </div>
   );
 };
+
+// --- PANTALLAS EXTRAÍDAS DE RESIDENT VIEW ---
 
 const ResidentNotificationCenter = ({ notifications, setActiveScreen, markAsRead }) => {
     return (
