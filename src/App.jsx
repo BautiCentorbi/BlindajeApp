@@ -8,7 +8,8 @@ import {
   Truck, HardHat, FileBarChart, Building,
   Bike, ScanLine, Zap, FileSpreadsheet, Filter, MessageSquare, Siren,
   CheckSquare, Radio, Flame, Megaphone, Skull,
-  Biohazard, Bomb, Hammer, Wind, Move, AlertOctagon, Info
+  Biohazard, Bomb, Hammer, Wind, Move, AlertOctagon, Info,
+  ClipboardList, Box, Save
 } from 'lucide-react';
 
 // --- ESTILOS GLOBALES ---
@@ -325,12 +326,30 @@ const ReportsModule = ({ notify }) => {
   );
 };
 
-// --- MÓDULOS DE GUARDIA RECONSTRUIDOS Y FUNCIONALES ---
+// --- MÓDULOS DE GUARDIA ACTUALIZADOS (VERSION 1.4) ---
 
-// Módulo de Proveedores
+// 1. MÓDULO DE PROVEEDORES: Wizard con Checklist de Seguridad
 const GuardSupplierWizard = ({ setScreen, notify }) => {
-  const [step, setStep] = useState('type'); // type, scan, details
-  const [data, setData] = useState({});
+  const [step, setStep] = useState(1);
+  const [formData, setFormData] = useState({
+      dni: '', name: '', company: '', plate: '', destination: ''
+  });
+  const [checklist, setChecklist] = useState({
+      art: false,
+      trunk: false,
+      tools: false,
+      badge: false
+  });
+
+  const updateForm = (field, value) => setFormData({...formData, [field]: value});
+  const toggleCheck = (field) => setChecklist({...checklist, [field]: !checklist[field]});
+  
+  const allChecksPassed = Object.values(checklist).every(Boolean);
+
+  const handleFinish = () => {
+      notify(`ACCESO AUTORIZADO\nProveedor: ${formData.company}\nDestino: ${formData.destination}`);
+      setScreen('dashboard');
+  };
 
   return (
     <div className="flex flex-col h-full bg-slate-50 text-slate-800 animate-fade-in-up">
@@ -340,56 +359,126 @@ const GuardSupplierWizard = ({ setScreen, notify }) => {
        </div>
        
        <div className="p-6 flex-1 overflow-y-auto">
-          {step === 'type' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
-                <button onClick={() => setStep('details')} className="bg-white p-8 rounded-xl shadow-sm border-2 border-slate-100 hover:border-orange-500 flex flex-col items-center gap-4 group transition-all">
-                    <div className="bg-orange-50 p-4 rounded-full text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-colors">
-                        <Truck size={40} />
-                    </div>
-                    <span className="font-black text-lg text-slate-700">Proveedor Regular</span>
-                </button>
-                <button onClick={() => setStep('details')} className="bg-white p-8 rounded-xl shadow-sm border-2 border-slate-100 hover:border-blue-500 flex flex-col items-center gap-4 group transition-all">
-                    <div className="bg-blue-50 p-4 rounded-full text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                        <Bike size={40} />
-                    </div>
-                    <span className="font-black text-lg text-slate-700">Delivery / Moto</span>
-                </button>
-            </div>
-          )}
+          {/* Progress Bar */}
+          <div className="flex items-center justify-between mb-8 px-4">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${step >= 1 ? 'bg-orange-600 text-white' : 'bg-slate-200 text-slate-500'}`}>1</div>
+              <div className={`h-1 flex-1 mx-2 ${step >= 2 ? 'bg-orange-600' : 'bg-slate-200'}`}></div>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${step >= 2 ? 'bg-orange-600 text-white' : 'bg-slate-200 text-slate-500'}`}>2</div>
+              <div className={`h-1 flex-1 mx-2 ${step >= 3 ? 'bg-orange-600' : 'bg-slate-200'}`}></div>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${step >= 3 ? 'bg-orange-600 text-white' : 'bg-slate-200 text-slate-500'}`}>3</div>
+          </div>
 
-          {step === 'details' && (
-             <div className="max-w-xl mx-auto bg-white p-6 rounded-xl shadow-lg border border-slate-100 space-y-4">
-                <h3 className="font-bold text-lg border-b pb-2">Datos del Ingreso</h3>
-                <div>
-                    <label className="text-xs font-bold uppercase text-slate-500">DNI Conductor</label>
-                    <input className="w-full p-3 border rounded-lg bg-slate-50" placeholder="Escanee o escriba DNI" />
+          {step === 1 && (
+             <div className="max-w-xl mx-auto bg-white p-6 rounded-xl shadow-lg border border-slate-100 space-y-4 animate-fade-in-up">
+                <h3 className="font-bold text-lg border-b pb-2 flex items-center gap-2"><User size={20} className="text-orange-600"/> Datos del Personal</h3>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="text-xs font-bold uppercase text-slate-500">DNI</label>
+                        <input className="w-full p-3 border rounded-lg bg-slate-50 font-bold" placeholder="Escanee DNI" value={formData.dni} onChange={e => updateForm('dni', e.target.value)} />
+                    </div>
+                    <div>
+                        <label className="text-xs font-bold uppercase text-slate-500">Nombre Completo</label>
+                        <input className="w-full p-3 border rounded-lg bg-slate-50" placeholder="Nombre" value={formData.name} onChange={e => updateForm('name', e.target.value)} />
+                    </div>
                 </div>
                 <div>
                     <label className="text-xs font-bold uppercase text-slate-500">Empresa / Rubro</label>
-                    <input className="w-full p-3 border rounded-lg bg-slate-50" placeholder="Ej: Coca Cola" />
+                    <input className="w-full p-3 border rounded-lg bg-slate-50" placeholder="Ej: Cablevisión" value={formData.company} onChange={e => updateForm('company', e.target.value)} />
                 </div>
-                <div>
-                    <label className="text-xs font-bold uppercase text-slate-500">Destino (Unidad)</label>
-                    <input className="w-full p-3 border rounded-lg bg-slate-50" placeholder="UF..." />
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="text-xs font-bold uppercase text-slate-500">Patente Vehículo</label>
+                        <input className="w-full p-3 border rounded-lg bg-slate-50 uppercase" placeholder="AAA 123" value={formData.plate} onChange={e => updateForm('plate', e.target.value)} />
+                    </div>
+                    <div>
+                        <label className="text-xs font-bold uppercase text-slate-500">Destino (UF)</label>
+                        <input className="w-full p-3 border rounded-lg bg-slate-50" placeholder="UF..." value={formData.destination} onChange={e => updateForm('destination', e.target.value)} />
+                    </div>
                 </div>
-                <Button className="w-full mt-4" onClick={() => { notify('Proveedor Registrado Correctamente'); setScreen('dashboard'); }}>REGISTRAR INGRESO</Button>
+                <Button className="w-full mt-4" disabled={!formData.dni || !formData.company} onClick={() => setStep(2)}>SIGUIENTE: PROTOCOLO</Button>
              </div>
+          )}
+
+          {step === 2 && (
+             <div className="max-w-xl mx-auto bg-white p-6 rounded-xl shadow-lg border-l-4 border-l-orange-500 space-y-6 animate-fade-in-up">
+                <div className="text-center">
+                    <Shield size={48} className="mx-auto text-orange-600 mb-2"/>
+                    <h3 className="font-black text-xl text-slate-800 uppercase">Protocolo de Seguridad</h3>
+                    <p className="text-sm text-slate-500">Debe cumplir todos los pasos para autorizar.</p>
+                </div>
+                <div className="space-y-3">
+                    <label className={`flex items-center gap-4 p-4 rounded-lg border-2 cursor-pointer transition-all ${checklist.art ? 'bg-emerald-50 border-emerald-500' : 'bg-slate-50 border-slate-200'}`}>
+                        <div className={`w-6 h-6 rounded border-2 flex items-center justify-center ${checklist.art ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-slate-300'}`}>
+                            {checklist.art && <CheckSquare size={16} className="text-white"/>}
+                        </div>
+                        <input type="checkbox" className="hidden" checked={checklist.art} onChange={() => toggleCheck('art')} />
+                        <span className="font-bold text-slate-700">Seguro / ART Vigente</span>
+                    </label>
+
+                    <label className={`flex items-center gap-4 p-4 rounded-lg border-2 cursor-pointer transition-all ${checklist.trunk ? 'bg-emerald-50 border-emerald-500' : 'bg-slate-50 border-slate-200'}`}>
+                        <div className={`w-6 h-6 rounded border-2 flex items-center justify-center ${checklist.trunk ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-slate-300'}`}>
+                            {checklist.trunk && <CheckSquare size={16} className="text-white"/>}
+                        </div>
+                        <input type="checkbox" className="hidden" checked={checklist.trunk} onChange={() => toggleCheck('trunk')} />
+                        <span className="font-bold text-slate-700">Revisión de Baúl / Caja</span>
+                    </label>
+
+                    <label className={`flex items-center gap-4 p-4 rounded-lg border-2 cursor-pointer transition-all ${checklist.tools ? 'bg-emerald-50 border-emerald-500' : 'bg-slate-50 border-slate-200'}`}>
+                        <div className={`w-6 h-6 rounded border-2 flex items-center justify-center ${checklist.tools ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-slate-300'}`}>
+                            {checklist.tools && <CheckSquare size={16} className="text-white"/>}
+                        </div>
+                        <input type="checkbox" className="hidden" checked={checklist.tools} onChange={() => toggleCheck('tools')} />
+                        <span className="font-bold text-slate-700">Registro de Herramientas</span>
+                    </label>
+
+                    <label className={`flex items-center gap-4 p-4 rounded-lg border-2 cursor-pointer transition-all ${checklist.badge ? 'bg-emerald-50 border-emerald-500' : 'bg-slate-50 border-slate-200'}`}>
+                        <div className={`w-6 h-6 rounded border-2 flex items-center justify-center ${checklist.badge ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-slate-300'}`}>
+                            {checklist.badge && <CheckSquare size={16} className="text-white"/>}
+                        </div>
+                        <input type="checkbox" className="hidden" checked={checklist.badge} onChange={() => toggleCheck('badge')} />
+                        <span className="font-bold text-slate-700">Retención DNI / Entrega Tarjeta</span>
+                    </label>
+                </div>
+                <Button className="w-full mt-4" disabled={!allChecksPassed} onClick={() => setStep(3)}>CONFIRMAR CUMPLIMIENTO</Button>
+             </div>
+          )}
+
+          {step === 3 && (
+              <div className="max-w-md mx-auto text-center space-y-6 pt-10 animate-fade-in-up">
+                  <div className="w-24 h-24 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-emerald-600 mb-4 animate-bounce">
+                      <CheckCircle size={64} />
+                  </div>
+                  <h3 className="text-2xl font-black text-slate-800">¡ACCESO HABILITADO!</h3>
+                  <p className="text-slate-500">El proveedor ha sido registrado y notificado al propietario.</p>
+                  <Button size="lg" className="w-full shadow-xl" onClick={handleFinish}>FINALIZAR PROCESO</Button>
+              </div>
           )}
        </div>
     </div>
   );
 };
 
-// Módulo de Paquetería
+// 2. MÓDULO DE PAQUETERÍA: Versión Data Entry
 const GuardPackageScreen = ({ setScreen, notify }) => {
+  const [showForm, setShowForm] = useState(false);
+  const [newPackage, setNewPackage] = useState({ unit: '', company: '', type: 'Paquete', receiver: '' });
   const [packages, setPackages] = useState([
-      {id: 1, unit: 'UF 402', type: 'Mercado Libre', status: 'pending'},
-      {id: 2, unit: 'UF 105', type: 'Amazon', status: 'pending'}
+      {id: 1, unit: 'UF 402', company: 'Mercado Libre', type: 'Paquete', status: 'pending', date: '10:30 AM'},
+      {id: 2, unit: 'UF 105', company: 'Amazon', type: 'Sobre', status: 'pending', date: '11:15 AM'}
   ]);
 
-  const receivePackage = () => {
-      setPackages([...packages, { id: Date.now(), unit: 'UF ???', type: 'Nuevo Paquete', status: 'pending'}]);
-      notify("Paquete ingresado al sistema", "success");
+  const handleSave = () => {
+      if(!newPackage.unit || !newPackage.company) return notify("Complete los datos", "error");
+      const pkg = { 
+          id: Date.now(), 
+          ...newPackage, 
+          status: 'pending', 
+          date: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) 
+      };
+      setPackages([pkg, ...packages]);
+      setShowForm(false);
+      setNewPackage({ unit: '', company: '', type: 'Paquete', receiver: '' });
+      notify(`Paquete registrado para ${pkg.unit}`, "success");
   };
 
   return (
@@ -397,30 +486,68 @@ const GuardPackageScreen = ({ setScreen, notify }) => {
        <div className="p-4 border-b border-slate-200 bg-white flex items-center justify-between gap-4 shadow-sm">
           <div className="flex items-center gap-4">
             <Button variant="secondary" size="sm" onClick={() => setScreen('dashboard')}><ArrowLeft className="w-4 h-4" /> VOLVER</Button>
-            <h2 className="font-black text-xl text-slate-800">GESTIÓN DE PAQUETERÍA</h2>
+            <h2 className="font-black text-xl text-slate-800">PAQUETERÍA</h2>
           </div>
-          <Button size="sm" onClick={receivePackage}>+ RECIBIR</Button>
+          <Button size="sm" onClick={() => setShowForm(true)} disabled={showForm}>+ RECIBIR</Button>
        </div>
-       <div className="p-6 flex-1 overflow-y-auto">
-          {packages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-slate-400">
-                  <Package size={48} className="mb-4 opacity-50" />
-                  <p>No hay paquetes en guardia.</p>
-              </div>
-          ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {packages.map(p => (
-                      <div key={p.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
-                          <div className="flex items-center gap-3">
-                              <div className="bg-emerald-100 p-2 rounded-full text-emerald-600"><Package size={20} /></div>
+       
+       <div className="p-6 flex-1 overflow-y-auto flex gap-6">
+          {/* LISTADO */}
+          <div className={`flex-1 space-y-4 ${showForm ? 'hidden md:block' : ''}`}>
+              <h3 className="font-bold text-slate-500 uppercase text-xs mb-2">En Guardia ({packages.length})</h3>
+              {packages.length === 0 ? (
+                  <div className="text-center text-slate-400 py-10 border-2 border-dashed rounded-xl">No hay paquetes pendientes.</div>
+              ) : (
+                  packages.map(p => (
+                      <div key={p.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center hover:shadow-md transition-shadow">
+                          <div className="flex items-center gap-4">
+                              <div className="bg-blue-100 p-3 rounded-lg text-blue-600"><Box size={24} /></div>
                               <div>
-                                  <p className="font-bold text-slate-800">{p.type}</p>
-                                  <p className="text-xs text-slate-500 font-bold">{p.unit}</p>
+                                  <div className="flex items-center gap-2">
+                                      <span className="font-black text-slate-800 text-lg">{p.unit}</span>
+                                      <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded uppercase font-bold">{p.type}</span>
+                                  </div>
+                                  <p className="text-sm text-slate-600">{p.company}</p>
+                                  <p className="text-xs text-slate-400 font-mono mt-1">{p.date}</p>
                               </div>
                           </div>
-                          <button className="text-xs font-bold text-orange-600 bg-orange-50 px-2 py-1 rounded hover:bg-orange-100" onClick={() => notify(`Notificación enviada a ${p.unit}`)}>AVISAR</button>
+                          <button className="bg-orange-50 text-orange-600 px-4 py-2 rounded-lg font-bold text-xs hover:bg-orange-100 uppercase" onClick={() => notify(`Recordatorio enviado a ${p.unit}`)}>Notificar</button>
                       </div>
-                  ))}
+                  ))
+              )}
+          </div>
+
+          {/* FORMULARIO DE INGRESO */}
+          {showForm && (
+              <div className="w-full md:w-1/3 bg-white p-6 rounded-xl shadow-xl border border-slate-200 h-fit animate-fade-in-up">
+                  <div className="flex justify-between items-center mb-4 border-b pb-2">
+                      <h3 className="font-black text-lg text-slate-800">Nuevo Ingreso</h3>
+                      <button onClick={() => setShowForm(false)} className="text-slate-400 hover:text-red-500"><XCircle size={20}/></button>
+                  </div>
+                  <div className="space-y-4">
+                      <div>
+                          <label className="text-xs font-bold uppercase text-slate-500">Unidad Destino</label>
+                          <input className="w-full p-3 border-2 border-slate-100 rounded-lg focus:border-blue-500 outline-none font-bold" placeholder="Ej: UF 402" value={newPackage.unit} onChange={e => setNewPackage({...newPackage, unit: e.target.value})} autoFocus />
+                      </div>
+                      <div>
+                          <label className="text-xs font-bold uppercase text-slate-500">Empresa / Courier</label>
+                          <input className="w-full p-3 border-2 border-slate-100 rounded-lg focus:border-blue-500 outline-none" placeholder="Ej: Mercado Libre" value={newPackage.company} onChange={e => setNewPackage({...newPackage, company: e.target.value})} />
+                      </div>
+                      <div>
+                          <label className="text-xs font-bold uppercase text-slate-500">Tipo</label>
+                          <div className="flex gap-2 mt-1">
+                              {['Paquete', 'Sobre', 'Comida'].map(type => (
+                                  <button key={type} onClick={() => setNewPackage({...newPackage, type})} className={`flex-1 py-2 text-xs font-bold rounded border ${newPackage.type === type ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-500 border-slate-200'}`}>{type}</button>
+                              ))}
+                          </div>
+                      </div>
+                      <div className="pt-2">
+                          <button className="w-full py-3 border-2 border-dashed border-slate-300 rounded-lg text-slate-400 font-bold text-xs flex items-center justify-center gap-2 hover:bg-slate-50 mb-4">
+                              <Camera size={16} /> TOMAR FOTO ETIQUETA
+                          </button>
+                          <Button className="w-full" onClick={handleSave}><Save size={16} /> REGISTRAR</Button>
+                      </div>
+                  </div>
               </div>
           )}
        </div>
@@ -428,7 +555,7 @@ const GuardPackageScreen = ({ setScreen, notify }) => {
   );
 };
 
-// Módulo de Rondas
+// Módulo de Rondas (Sin cambios mayores, solo asegurando visualización)
 const GuardRoundsScreen = ({ setScreen, notify }) => {
   const [points, setPoints] = useState(ROUND_POINTS_DATA);
 
@@ -1031,24 +1158,6 @@ const LocalAdminView = ({ onBack, currentUser, notify, addGlobalNotification }) 
         {activeTab === 'suppliers' && (<div className="space-y-4"><div className="flex gap-2 mb-4"><input className="p-2 border rounded-lg text-sm w-64" placeholder="Buscar proveedor..." /><Button size="sm" variant="secondary">Filtrar</Button></div><Card className="p-0"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-slate-500 uppercase text-xs font-bold"><tr><th className="px-6 py-3">Empresa</th><th className="px-6 py-3">Personal</th><th className="px-6 py-3">Rubro</th><th className="px-6 py-3">Servicio</th><th className="px-6 py-3">Patente</th></tr></thead><tbody className="divide-y divide-slate-100">{SUPPLIERS_DB.map((s, i) => (<tr key={i} className="hover:bg-slate-50"><td className="px-6 py-4 font-bold text-slate-700">{s.company}</td><td className="px-6 py-4 text-slate-600">{s.name}<br/><span className="text-xs text-slate-400">DNI: {s.dni}</span></td><td className="px-6 py-4"><span className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs font-bold">{s.category}</span></td><td className="px-6 py-4 text-slate-600">{s.serviceType || '-'}</td><td className="px-6 py-4 font-mono text-slate-500 uppercase">{s.plate}</td></tr>))}</tbody></table></Card></div>)}
         {activeTab === 'incidents' && (<div className="grid grid-cols-1 gap-4">{INCIDENTS_DB.map(inc => (<Card key={inc.id} className="p-4 border-l-4 border-l-red-500 flex justify-between items-center"><div className="flex items-start gap-4"><div className="p-3 bg-red-50 rounded-full text-red-600"><AlertTriangle size={24} /></div><div><h4 className="font-bold text-slate-800 text-lg">{inc.type}</h4><p className="text-slate-600">{inc.detail}</p><div className="flex gap-3 mt-2 text-xs text-slate-500 font-bold uppercase"><span className="flex items-center gap-1"><Clock size={12} /> {inc.time}</span><span className="flex items-center gap-1"><MapPin size={12} /> {inc.location}</span></div></div></div><div className="text-right"><span className={`px-3 py-1 rounded-full text-xs font-black uppercase ${inc.status === 'Resuelto' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{inc.status}</span><p className="text-xs text-slate-400 mt-2 font-bold uppercase">Prioridad {inc.severity}</p></div></Card>))}</div>)}
         {activeTab === 'reservations' && (<div className="space-y-6"><Card className="p-6"><div className="flex items-center gap-4 mb-6"><div className="p-3 bg-orange-100 text-orange-600 rounded-lg"><CalendarCheck size={32} /></div><div><h3 className="text-xl font-bold text-slate-800">Estado del S.U.M.</h3><p className="text-slate-500">Capacidad: 50 Personas • Limpieza incluida</p></div></div><div className="grid grid-cols-1 md:grid-cols-2 gap-4">{AMENITIES_SLOTS.map((slot, index) => (<div key={index} className={`p-4 rounded-lg border-2 flex justify-between items-center ${slot.status === 'booked' ? 'border-red-100 bg-red-50' : 'border-emerald-100 bg-emerald-50'}`}><div className="flex items-center gap-3"><Clock size={20} className={slot.status === 'booked' ? 'text-red-400' : 'text-emerald-500'} /><span className="font-bold text-slate-700 text-lg">{slot.time}</span></div><div className="text-right"><span className={`text-xs font-black uppercase px-2 py-1 rounded ${slot.status === 'booked' ? 'bg-red-200 text-red-800' : 'bg-emerald-200 text-emerald-800'}`}>{slot.status === 'booked' ? 'OCUPADO' : 'DISPONIBLE'}</span>{slot.status === 'booked' && <p className="text-xs text-slate-600 mt-1 font-bold">{slot.by}</p>}</div></div>))}</div></Card></div>)}
-      </div>
-    </div>
-  );
-};
-
-const AdminView = ({ onBack, notify }) => {
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const SidebarItem = ({ icon: Icon, label, tabId }) => (
-    <div onClick={() => setActiveTab(tabId)} className={`p-3 flex items-center gap-3 cursor-pointer transition-all font-medium rounded-lg mb-1 ${activeTab === tabId ? 'bg-orange-50 text-orange-700 border-l-4 border-orange-600' : 'hover:bg-slate-50 hover:text-slate-900 text-slate-500 border-l-4 border-transparent'}`}><Icon size={20} /> <span>{label}</span></div>
-  );
-  return (
-    <div className="h-full bg-slate-50 flex flex-col md:flex-row font-sans">
-      <div className="w-full md:w-64 bg-white border-r border-slate-200 text-slate-600 flex flex-col z-20"><div className="p-6 border-b border-slate-100"><BrandLogo /></div><nav className="flex-1 p-4 overflow-y-auto"><p className="px-3 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 mt-4">Gestión Global</p><SidebarItem icon={BarChart3} label="Dashboard" tabId="dashboard" /><SidebarItem icon={Users} label="Residentes" tabId="residents" /><SidebarItem icon={MapPin} label="Rondas & SLA" tabId="rounds" /><SidebarItem icon={FileText} label="Reportes" tabId="reports" /><p className="px-3 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 mt-6">Hardware</p><SidebarItem icon={Video} label="Cámaras LPR" tabId="lpr_config" /></nav><div className="p-4 border-t border-slate-100"><Button variant="secondary" className="w-full" onClick={onBack} size="sm"><LogOut size={14} /> Cerrar Sesión</Button></div></div>
-      <div className="flex-1 overflow-y-auto bg-slate-50"><header className="bg-white px-8 py-5 flex justify-between items-center border-b border-slate-200 shadow-sm sticky top-0 z-10"><div><h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">{activeTab === 'dashboard' ? 'Panel de Control General' : activeTab === 'reports' ? 'Reportes Globales' : activeTab}</h2><p className="text-sm text-slate-500 flex items-center gap-2 font-medium"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> Estado del Sistema: Óptimo</p></div><div className="flex items-center gap-4"><div className="bg-white p-2 rounded-full border border-slate-200 relative shadow-sm"><Bell className="text-slate-500" size={20} /><span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-white"></span></div></div></header>
-        <div className="p-8">
-            {activeTab === 'reports' && <ReportsModule notify={notify} />}
-            {activeTab === 'dashboard' && (<><div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8"><Card className="p-5 border-l-4 border-l-orange-500"><div className="flex justify-between items-start mb-2"><p className="text-slate-500 text-xs font-bold uppercase">Visitas Activas</p><Users size={18} className="text-orange-500" /></div><h3 className="text-3xl font-black text-slate-800">142</h3><p className="text-xs text-emerald-600 mt-1 flex items-center font-bold">▲ 12% vs ayer</p></Card><Card className="p-5 border-l-4 border-l-slate-600"><div className="flex justify-between items-start mb-2"><p className="text-slate-500 text-xs font-bold uppercase">Cumplimiento</p><Activity size={18} className="text-slate-600" /></div><h3 className="text-3xl font-black text-slate-800">98.5%</h3><p className="text-xs text-emerald-600 mt-1 font-bold">SLA Rondas</p></Card><Card className="p-5 border-l-4 border-l-red-500"><div className="flex justify-between items-start mb-2"><p className="text-slate-500 text-xs font-bold uppercase">Alertas</p><AlertTriangle size={18} className="text-red-500" /></div><h3 className="text-3xl font-black text-slate-800">3</h3><p className="text-xs text-red-600 mt-1 font-bold">Pendientes de revisión</p></Card><Card className="p-5 border-l-4 border-l-blue-500"><div className="flex justify-between items-start mb-2"><p className="text-slate-500 text-xs font-bold uppercase">Reservas SUM</p><Calendar size={18} className="text-blue-500" /></div><h3 className="text-3xl font-black text-slate-800">8</h3><p className="text-xs text-slate-400 mt-1 font-bold">Para hoy</p></Card></div><div className="grid grid-cols-1 lg:grid-cols-3 gap-6"><Card className="lg:col-span-2 p-0"><div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white"><h3 className="font-bold text-sm text-slate-800 uppercase tracking-wide">Últimos Ingresos Globales</h3><span className="text-xs text-orange-600 font-bold cursor-pointer hover:underline">VER REPORTE</span></div><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-slate-500 uppercase text-xs font-bold"><tr><th className="px-6 py-3">Hora</th><th className="px-6 py-3">Tipo</th><th className="px-6 py-3">Detalle</th><th className="px-6 py-3">Estado</th></tr></thead><tbody className="divide-y divide-slate-100"><tr className="hover:bg-slate-50 transition-colors"><td className="px-6 py-4 font-mono text-xs text-slate-500">14:32:01</td><td className="px-6 py-4"><span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide">Visita</span></td><td className="px-6 py-4 font-medium text-slate-700">Juan Pérez <span className="text-slate-400 font-normal">→ UF 402</span></td><td className="px-6 py-4 text-emerald-600 font-bold text-xs">AUTORIZADO</td></tr></tbody></table></Card><Card className="p-0 flex flex-col"><div className="px-6 py-4 border-b border-slate-100 bg-white"><h3 className="font-bold text-sm text-slate-800 uppercase tracking-wide">Mapa de Calor</h3></div><div className="flex-1 bg-slate-50 p-6 flex flex-col items-center justify-center min-h-[200px] relative"><MapPin size={48} className="text-slate-300 mb-2" /><p className="text-slate-400 text-xs text-center font-medium">Visualización Georreferenciada<br/>(Datos en tiempo real)</p></div></Card></div></>)}
-        </div>
       </div>
     </div>
   );
