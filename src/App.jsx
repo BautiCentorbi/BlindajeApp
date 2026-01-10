@@ -9,7 +9,7 @@ import {
   Bike, ScanLine, Zap, FileSpreadsheet, Filter, MessageSquare, Siren,
   CheckSquare, Radio, Flame, Megaphone, Skull,
   Biohazard, Bomb, Hammer, Wind, Move, AlertOctagon, Info,
-  ClipboardList, Box, Save
+  ClipboardList, Box, Save, RadioReceiver
 } from 'lucide-react';
 
 // --- ESTILOS GLOBALES ---
@@ -326,7 +326,52 @@ const ReportsModule = ({ notify }) => {
   );
 };
 
-// --- MÓDULOS DE GUARDIA ACTUALIZADOS (VERSION 1.4) ---
+// --- MÓDULOS DE GUARDIA (VERSION 1.4 + 1.6 NOTIFICACIONES) ---
+
+const GuardNotificationCenter = ({ notifications, setScreen, markAsRead }) => {
+    return (
+        <div className="flex flex-col h-full bg-slate-50 text-slate-800 animate-fade-in-up">
+            <div className="p-4 border-b border-slate-200 bg-white flex items-center gap-4 shadow-sm">
+                <Button variant="secondary" size="sm" onClick={() => setScreen('dashboard')}><ArrowLeft className="w-4 h-4" /> VOLVER</Button>
+                <h2 className="font-black text-xl text-slate-800 tracking-tight">NOVEDADES Y AVISOS</h2>
+            </div>
+            <div className="flex-1 p-6 overflow-y-auto space-y-4">
+                {notifications.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-64 text-slate-400 border-2 border-dashed border-slate-200 rounded-xl">
+                        <RadioReceiver size={48} className="mb-2 opacity-20" />
+                        <p className="font-bold">Sin novedades entrantes</p>
+                    </div>
+                ) : (
+                    notifications.map((notif) => (
+                        <div key={notif.id} className={`bg-white p-5 rounded-xl border-l-8 shadow-sm relative overflow-hidden transition-all ${notif.read ? 'border-slate-300 opacity-60' : notif.priority === 'critical' || notif.type === 'evacuation' ? 'border-red-600 bg-red-50' : 'border-orange-500'}`}>
+                            
+                            <div className="flex justify-between items-start mb-2">
+                                <div className="flex items-center gap-2">
+                                    {notif.priority === 'critical' ? <AlertTriangle className="text-red-600 animate-pulse" size={20}/> : <Bell className="text-slate-400" size={16}/>}
+                                    <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${notif.priority === 'critical' ? 'bg-red-200 text-red-800' : 'bg-slate-100 text-slate-600'}`}>
+                                        {notif.type === 'alert' ? 'ADMINISTRACIÓN' : notif.type === 'evacuation' ? 'EVACUACIÓN' : 'RESIDENTE'}
+                                    </span>
+                                </div>
+                                <span className="text-xs text-slate-400 font-mono font-bold">{notif.date}</span>
+                            </div>
+                            
+                            <h3 className={`font-black text-lg mb-1 ${notif.priority === 'critical' ? 'text-red-700' : 'text-slate-800'}`}>{notif.title}</h3>
+                            <p className="text-sm text-slate-600 font-medium leading-relaxed mb-4">{notif.message}</p>
+                            
+                            {!notif.read && (
+                                <div className="flex justify-end">
+                                    <button onClick={() => markAsRead(notif.id)} className="flex items-center gap-2 text-xs font-black text-slate-500 bg-slate-100 px-3 py-2 rounded hover:bg-slate-200 hover:text-slate-800 transition-colors uppercase">
+                                        <CheckCircle size={14}/> Marcar como Enterado
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    ))
+                )}
+            </div>
+        </div>
+    );
+};
 
 // 1. MÓDULO DE PROVEEDORES: Wizard con Checklist de Seguridad
 const GuardSupplierWizard = ({ setScreen, notify }) => {
@@ -555,7 +600,7 @@ const GuardPackageScreen = ({ setScreen, notify }) => {
   );
 };
 
-// Módulo de Rondas (Sin cambios mayores, solo asegurando visualización)
+// Módulo de Rondas
 const GuardRoundsScreen = ({ setScreen, notify }) => {
   const [points, setPoints] = useState(ROUND_POINTS_DATA);
 
@@ -784,10 +829,34 @@ const GuardLprScreen = ({ setScreen, triggerLprSimulation }) => (
   </div>
 );
 
-const GuardDashboard = ({ currentUser, notify, onBack, setScreen, addGlobalNotification }) => {
+const GuardDashboard = ({ currentUser, notify, onBack, setScreen, addGlobalNotification, notifications }) => {
+    // Calcular notificaciones no leídas
+    const unreadCount = notifications ? notifications.filter(n => !n.read).length : 0;
+
     return (
         <div className="flex flex-col h-full bg-slate-50 text-slate-800 font-sans">
-            <div className="h-20 px-6 bg-white border-b border-slate-200 flex justify-between items-center shadow-sm z-10"><div className="flex items-center gap-4"><BrandLogo /><div className="h-8 w-px bg-slate-200 mx-2"></div><div><h2 className="font-bold text-slate-800 text-sm tracking-wider uppercase">Puesto Principal</h2><p className="text-xs text-orange-600 font-bold">{currentUser} • Turno Día</p></div></div><div className="flex gap-3"><Button variant="secondary" size="md" onClick={onBack}>Cerrar Turno</Button></div></div>
+            <div className="h-20 px-6 bg-white border-b border-slate-200 flex justify-between items-center shadow-sm z-10">
+                <div className="flex items-center gap-4">
+                    <BrandLogo />
+                    <div className="h-8 w-px bg-slate-200 mx-2"></div>
+                    <div>
+                        <h2 className="font-bold text-slate-800 text-sm tracking-wider uppercase">Puesto Principal</h2>
+                        <p className="text-xs text-orange-600 font-bold">{currentUser} • Turno Día</p>
+                    </div>
+                </div>
+                <div className="flex gap-3 items-center">
+                    {/* BELL ICON FOR NOTIFICATIONS */}
+                    <button onClick={() => setScreen('notifications')} className="p-2 rounded-full border border-slate-200 bg-white shadow-sm relative hover:bg-slate-50 transition-all mr-2">
+                        <Bell className="w-5 h-5 text-slate-600" />
+                        {unreadCount > 0 && (
+                            <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white">
+                                {unreadCount}
+                            </span>
+                        )}
+                    </button>
+                    <Button variant="secondary" size="md" onClick={onBack}>Cerrar Turno</Button>
+                </div>
+            </div>
             <div className="p-6 grid grid-cols-2 md:grid-cols-3 gap-6 flex-1 overflow-y-auto bg-slate-50">
             <button onClick={() => setScreen('supplier')} className="group bg-white hover:bg-orange-50 border-2 border-slate-200 hover:border-orange-500 p-6 rounded-2xl flex flex-col items-center gap-4 transition-all shadow-sm hover:shadow-md"><div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center group-hover:bg-orange-100 transition-colors"><Truck className="w-8 h-8 text-slate-600 group-hover:text-orange-600" /></div><span className="font-black text-lg text-slate-700 group-hover:text-orange-700 uppercase tracking-tight">Ingreso Proveedores</span></button>
             <button onClick={() => setScreen('package')} className="group bg-white hover:bg-emerald-50 border-2 border-slate-200 hover:border-emerald-500 p-6 rounded-2xl flex flex-col items-center gap-4 transition-all shadow-sm hover:shadow-md"><div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center group-hover:bg-emerald-100 transition-colors"><Package className="w-8 h-8 text-slate-600 group-hover:text-emerald-600" /></div><span className="font-black text-lg text-slate-700 group-hover:text-emerald-700 uppercase tracking-tight">Paquetería</span></button>
@@ -845,7 +914,7 @@ const GuardVisitsScreen = ({ setScreen, notify, addGlobalNotification }) => {
   );
 };
 
-const GuardView = ({ onBack, currentUser, notify, addGlobalNotification }) => {
+const GuardView = ({ onBack, currentUser, notify, addGlobalNotification, notifications, markAsRead }) => {
   const [screen, setScreen] = useState('dashboard'); 
   const [lprPopupData, setLprPopupData] = useState(null);
 
@@ -856,13 +925,15 @@ const GuardView = ({ onBack, currentUser, notify, addGlobalNotification }) => {
 
   return (
     <div className="h-full w-full relative">
-        {screen === 'dashboard' && <GuardDashboard currentUser={currentUser} notify={notify} onBack={onBack} setScreen={setScreen} addGlobalNotification={addGlobalNotification} />}
+        {screen === 'dashboard' && <GuardDashboard currentUser={currentUser} notify={notify} onBack={onBack} setScreen={setScreen} addGlobalNotification={addGlobalNotification} notifications={notifications} />}
         {screen === 'supplier' && <GuardSupplierWizard setScreen={setScreen} notify={notify} />}
         {screen === 'rounds' && <GuardRoundsScreen setScreen={setScreen} notify={notify} addGlobalNotification={addGlobalNotification} />}
         {screen === 'package' && <GuardPackageScreen setScreen={setScreen} currentUser={currentUser} notify={notify} addGlobalNotification={addGlobalNotification} />}
         {screen === 'visits' && <GuardVisitsScreen setScreen={setScreen} notify={notify} addGlobalNotification={addGlobalNotification} />}
         {screen === 'lpr' && <GuardLprScreen setScreen={setScreen} triggerLprSimulation={triggerLprSimulation} />}
         {screen === 'emergency' && <GuardEmergencyScreen setScreen={setScreen} notify={notify} addGlobalNotification={addGlobalNotification} />}
+        {screen === 'notifications' && <GuardNotificationCenter notifications={notifications} setScreen={setScreen} markAsRead={markAsRead} />}
+        
         {lprPopupData && <GuardLprPopup data={lprPopupData} onClose={() => setLprPopupData(null)} notify={notify} addGlobalNotification={addGlobalNotification} />}
     </div>
   );
@@ -1132,13 +1203,14 @@ const LoginScreen = ({ role, onLoginSuccess, onBack }) => {
   );
 };
 
-const LocalAdminView = ({ onBack, currentUser, notify, addGlobalNotification }) => {
+// --- VISTAS DE ADMINISTRACIÓN CON OVERLAY INYECTADO ---
+
+const LocalAdminView = ({ onBack, currentUser, notify, addGlobalNotification, notifications, markAsRead }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const SidebarItem = ({ icon: Icon, label, tabId }) => (
     <div onClick={() => setActiveTab(tabId)} className={`p-3 flex items-center gap-3 cursor-pointer transition-all font-medium rounded-lg mb-1 ${activeTab === tabId ? 'bg-orange-50 text-orange-700 border-l-4 border-orange-600' : 'hover:bg-slate-50 hover:text-slate-900 text-slate-500 border-l-4 border-transparent'}`}><Icon size={20} /> <span>{label}</span></div>
   );
 
-  // 3. Alertas Incidentes (Desde Admin)
   const sendBroadcast = () => { 
       addGlobalNotification({ 
           type: 'alert', title: 'Aviso de Administración', message: 'Se informa corte programado de agua de 14 a 16hs.', priority: 'normal' 
@@ -1147,7 +1219,16 @@ const LocalAdminView = ({ onBack, currentUser, notify, addGlobalNotification }) 
   };
 
   return (
-    <div className="h-full bg-slate-50 flex flex-col md:flex-row font-sans">
+    <div className="h-full bg-slate-50 flex flex-col md:flex-row font-sans relative">
+      {/* OVERLAY PARA ADMIN LOCAL */}
+      <EmergencyOverlay 
+        notifications={notifications} 
+        setActiveScreen={(target) => { 
+            // Si el overlay pide "ver detalles" (notifications), mandamos al tab de incidentes
+            if(target === 'notifications') setActiveTab('incidents');
+        }} 
+      />
+
       <div className="w-full md:w-64 bg-white border-r border-slate-200 text-slate-600 flex flex-col z-20"><div className="p-6 border-b border-slate-100"><BrandLogo /></div><div className="p-4 border-b border-slate-100 bg-slate-50/50"><p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Propiedad</p><h3 className="font-black text-slate-800 text-lg leading-tight">Barrio Privado<br/>Los Robles</h3></div><nav className="flex-1 p-4 overflow-y-auto"><p className="px-3 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 mt-2">Módulos de Gestión</p><SidebarItem icon={FileBarChart} label="Dashboard" tabId="dashboard" /><SidebarItem icon={Users} label="Visitas" tabId="visits" /><SidebarItem icon={Truck} label="Proveedores" tabId="suppliers" /><SidebarItem icon={AlertTriangle} label="Incidentes" tabId="incidents" /><SidebarItem icon={CalendarCheck} label="Reservas SUM" tabId="reservations" /><SidebarItem icon={FileText} label="Reportes" tabId="reports" /></nav><div className="p-4 border-t border-slate-100"><div className="flex items-center gap-3 mb-4"><div className="w-8 h-8 rounded bg-orange-600 flex items-center justify-center font-bold text-white shadow-md">GL</div><div><p className="text-xs font-bold text-slate-700">Gerencia</p><p className="text-[10px] text-slate-400">Administrador Local</p></div></div><Button variant="secondary" className="w-full" onClick={onBack} size="sm"><LogOut size={14} /> Cerrar Sesión</Button></div></div>
       <div className="flex-1 overflow-y-auto bg-slate-50 p-8"><header className="flex justify-between items-center mb-8"><div><h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">{activeTab === 'dashboard' ? 'Resumen Operativo' : activeTab === 'reports' ? 'Centro de Reportes' : activeTab}</h2><p className="text-sm text-slate-500 font-medium">Vista de Administración Local • {new Date().toLocaleDateString()}</p></div>{activeTab !== 'reports' && (<div className="flex gap-2"><Button variant="outline" size="sm"><Search size={16} /> Buscar</Button><Button variant="primary" size="sm" onClick={sendBroadcast}><Send size={16} /> Enviar Comunicado</Button></div>)}</header>
         {activeTab === 'reports' && <ReportsModule notify={notify} />}
@@ -1158,6 +1239,33 @@ const LocalAdminView = ({ onBack, currentUser, notify, addGlobalNotification }) 
         {activeTab === 'suppliers' && (<div className="space-y-4"><div className="flex gap-2 mb-4"><input className="p-2 border rounded-lg text-sm w-64" placeholder="Buscar proveedor..." /><Button size="sm" variant="secondary">Filtrar</Button></div><Card className="p-0"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-slate-500 uppercase text-xs font-bold"><tr><th className="px-6 py-3">Empresa</th><th className="px-6 py-3">Personal</th><th className="px-6 py-3">Rubro</th><th className="px-6 py-3">Servicio</th><th className="px-6 py-3">Patente</th></tr></thead><tbody className="divide-y divide-slate-100">{SUPPLIERS_DB.map((s, i) => (<tr key={i} className="hover:bg-slate-50"><td className="px-6 py-4 font-bold text-slate-700">{s.company}</td><td className="px-6 py-4 text-slate-600">{s.name}<br/><span className="text-xs text-slate-400">DNI: {s.dni}</span></td><td className="px-6 py-4"><span className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs font-bold">{s.category}</span></td><td className="px-6 py-4 text-slate-600">{s.serviceType || '-'}</td><td className="px-6 py-4 font-mono text-slate-500 uppercase">{s.plate}</td></tr>))}</tbody></table></Card></div>)}
         {activeTab === 'incidents' && (<div className="grid grid-cols-1 gap-4">{INCIDENTS_DB.map(inc => (<Card key={inc.id} className="p-4 border-l-4 border-l-red-500 flex justify-between items-center"><div className="flex items-start gap-4"><div className="p-3 bg-red-50 rounded-full text-red-600"><AlertTriangle size={24} /></div><div><h4 className="font-bold text-slate-800 text-lg">{inc.type}</h4><p className="text-slate-600">{inc.detail}</p><div className="flex gap-3 mt-2 text-xs text-slate-500 font-bold uppercase"><span className="flex items-center gap-1"><Clock size={12} /> {inc.time}</span><span className="flex items-center gap-1"><MapPin size={12} /> {inc.location}</span></div></div></div><div className="text-right"><span className={`px-3 py-1 rounded-full text-xs font-black uppercase ${inc.status === 'Resuelto' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{inc.status}</span><p className="text-xs text-slate-400 mt-2 font-bold uppercase">Prioridad {inc.severity}</p></div></Card>))}</div>)}
         {activeTab === 'reservations' && (<div className="space-y-6"><Card className="p-6"><div className="flex items-center gap-4 mb-6"><div className="p-3 bg-orange-100 text-orange-600 rounded-lg"><CalendarCheck size={32} /></div><div><h3 className="text-xl font-bold text-slate-800">Estado del S.U.M.</h3><p className="text-slate-500">Capacidad: 50 Personas • Limpieza incluida</p></div></div><div className="grid grid-cols-1 md:grid-cols-2 gap-4">{AMENITIES_SLOTS.map((slot, index) => (<div key={index} className={`p-4 rounded-lg border-2 flex justify-between items-center ${slot.status === 'booked' ? 'border-red-100 bg-red-50' : 'border-emerald-100 bg-emerald-50'}`}><div className="flex items-center gap-3"><Clock size={20} className={slot.status === 'booked' ? 'text-red-400' : 'text-emerald-500'} /><span className="font-bold text-slate-700 text-lg">{slot.time}</span></div><div className="text-right"><span className={`text-xs font-black uppercase px-2 py-1 rounded ${slot.status === 'booked' ? 'bg-red-200 text-red-800' : 'bg-emerald-200 text-emerald-800'}`}>{slot.status === 'booked' ? 'OCUPADO' : 'DISPONIBLE'}</span>{slot.status === 'booked' && <p className="text-xs text-slate-600 mt-1 font-bold">{slot.by}</p>}</div></div>))}</div></Card></div>)}
+      </div>
+    </div>
+  );
+};
+
+const AdminView = ({ onBack, notify, notifications, markAsRead }) => {
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const SidebarItem = ({ icon: Icon, label, tabId }) => (
+    <div onClick={() => setActiveTab(tabId)} className={`p-3 flex items-center gap-3 cursor-pointer transition-all font-medium rounded-lg mb-1 ${activeTab === tabId ? 'bg-orange-50 text-orange-700 border-l-4 border-orange-600' : 'hover:bg-slate-50 hover:text-slate-900 text-slate-500 border-l-4 border-transparent'}`}><Icon size={20} /> <span>{label}</span></div>
+  );
+  return (
+    <div className="h-full bg-slate-50 flex flex-col md:flex-row font-sans relative">
+      {/* OVERLAY PARA ADMIN GLOBAL */}
+      <EmergencyOverlay 
+        notifications={notifications} 
+        setActiveScreen={(target) => { 
+            // Si el overlay pide "ver detalles", podemos ir al dashboard
+            if(target === 'notifications') setActiveTab('dashboard');
+        }} 
+      />
+
+      <div className="w-full md:w-64 bg-white border-r border-slate-200 text-slate-600 flex flex-col z-20"><div className="p-6 border-b border-slate-100"><BrandLogo /></div><nav className="flex-1 p-4 overflow-y-auto"><p className="px-3 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 mt-4">Gestión Global</p><SidebarItem icon={BarChart3} label="Dashboard" tabId="dashboard" /><SidebarItem icon={Users} label="Residentes" tabId="residents" /><SidebarItem icon={MapPin} label="Rondas & SLA" tabId="rounds" /><SidebarItem icon={FileText} label="Reportes" tabId="reports" /><p className="px-3 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 mt-6">Hardware</p><SidebarItem icon={Video} label="Cámaras LPR" tabId="lpr_config" /></nav><div className="p-4 border-t border-slate-100"><Button variant="secondary" className="w-full" onClick={onBack} size="sm"><LogOut size={14} /> Cerrar Sesión</Button></div></div>
+      <div className="flex-1 overflow-y-auto bg-slate-50"><header className="bg-white px-8 py-5 flex justify-between items-center border-b border-slate-200 shadow-sm sticky top-0 z-10"><div><h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">{activeTab === 'dashboard' ? 'Panel de Control General' : activeTab === 'reports' ? 'Reportes Globales' : activeTab}</h2><p className="text-sm text-slate-500 flex items-center gap-2 font-medium"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> Estado del Sistema: Óptimo</p></div><div className="flex items-center gap-4"><div className="bg-white p-2 rounded-full border border-slate-200 relative shadow-sm"><Bell className="text-slate-500" size={20} /><span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-white"></span></div></div></header>
+        <div className="p-8">
+            {activeTab === 'reports' && <ReportsModule notify={notify} />}
+            {activeTab === 'dashboard' && (<><div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8"><Card className="p-5 border-l-4 border-l-orange-500"><div className="flex justify-between items-start mb-2"><p className="text-slate-500 text-xs font-bold uppercase">Visitas Activas</p><Users size={18} className="text-orange-500" /></div><h3 className="text-3xl font-black text-slate-800">142</h3><p className="text-xs text-emerald-600 mt-1 flex items-center font-bold">▲ 12% vs ayer</p></Card><Card className="p-5 border-l-4 border-l-slate-600"><div className="flex justify-between items-start mb-2"><p className="text-slate-500 text-xs font-bold uppercase">Cumplimiento</p><Activity size={18} className="text-slate-600" /></div><h3 className="text-3xl font-black text-slate-800">98.5%</h3><p className="text-xs text-emerald-600 mt-1 font-bold">SLA Rondas</p></Card><Card className="p-5 border-l-4 border-l-red-500"><div className="flex justify-between items-start mb-2"><p className="text-slate-500 text-xs font-bold uppercase">Alertas</p><AlertTriangle size={18} className="text-red-500" /></div><h3 className="text-3xl font-black text-slate-800">3</h3><p className="text-xs text-red-600 mt-1 font-bold">Pendientes de revisión</p></Card><Card className="p-5 border-l-4 border-l-blue-500"><div className="flex justify-between items-start mb-2"><p className="text-slate-500 text-xs font-bold uppercase">Reservas SUM</p><Calendar size={18} className="text-blue-500" /></div><h3 className="text-3xl font-black text-slate-800">8</h3><p className="text-xs text-slate-400 mt-1 font-bold">Para hoy</p></Card></div><div className="grid grid-cols-1 lg:grid-cols-3 gap-6"><Card className="lg:col-span-2 p-0"><div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white"><h3 className="font-bold text-sm text-slate-800 uppercase tracking-wide">Últimos Ingresos Globales</h3><span className="text-xs text-orange-600 font-bold cursor-pointer hover:underline">VER REPORTE</span></div><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-slate-500 uppercase text-xs font-bold"><tr><th className="px-6 py-3">Hora</th><th className="px-6 py-3">Tipo</th><th className="px-6 py-3">Detalle</th><th className="px-6 py-3">Estado</th></tr></thead><tbody className="divide-y divide-slate-100"><tr className="hover:bg-slate-50 transition-colors"><td className="px-6 py-4 font-mono text-xs text-slate-500">14:32:01</td><td className="px-6 py-4"><span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide">Visita</span></td><td className="px-6 py-4 font-medium text-slate-700">Juan Pérez <span className="text-slate-400 font-normal">→ UF 402</span></td><td className="px-6 py-4 text-emerald-600 font-bold text-xs">AUTORIZADO</td></tr></tbody></table></Card><Card className="p-0 flex flex-col"><div className="px-6 py-4 border-b border-slate-100 bg-white"><h3 className="font-bold text-sm text-slate-800 uppercase tracking-wide">Mapa de Calor</h3></div><div className="flex-1 bg-slate-50 p-6 flex flex-col items-center justify-center min-h-[200px] relative"><MapPin size={48} className="text-slate-300 mb-2" /><p className="text-slate-400 text-xs text-center font-medium">Visualización Georreferenciada<br/>(Datos en tiempo real)</p></div></Card></div></>)}
+        </div>
       </div>
     </div>
   );
@@ -1193,10 +1301,13 @@ export default function App() {
     if (currentRole && isAuthenticated) {
       return (
           <div className="h-screen w-full bg-white overflow-hidden font-sans">
-              {currentRole === 'guard' && <GuardView onBack={resetAuth} currentUser={currentUser} notify={showNotification} addGlobalNotification={addGlobalNotification} />}
+              {currentRole === 'guard' && <GuardView onBack={resetAuth} currentUser={currentUser} notify={showNotification} addGlobalNotification={addGlobalNotification} notifications={globalNotifications} markAsRead={markAsRead} />}
+              
               {currentRole === 'resident' && <ResidentView onBack={resetAuth} notify={showNotification} notifications={globalNotifications} markAsRead={markAsRead} addGlobalNotification={addGlobalNotification} />}
-              {currentRole === 'localAdmin' && <LocalAdminView onBack={resetAuth} currentUser={currentUser} notify={showNotification} addGlobalNotification={addGlobalNotification} />}
-              {currentRole === 'admin' && <AdminView onBack={resetAuth} notify={showNotification} />}
+              
+              {currentRole === 'localAdmin' && <LocalAdminView onBack={resetAuth} currentUser={currentUser} notify={showNotification} addGlobalNotification={addGlobalNotification} notifications={globalNotifications} markAsRead={markAsRead} />}
+              
+              {currentRole === 'admin' && <AdminView onBack={resetAuth} notify={showNotification} notifications={globalNotifications} markAsRead={markAsRead} />}
           </div>
       );
     }
