@@ -404,12 +404,35 @@ const DELIVERY_PLATFORMS = [
 ];
 
 const ROUND_POINTS_DATA = [
-  { id: 1, name: "Garita Principal", pos: { x: 10, y: 10 }, status: "pending", time: null },
-  { id: 2, name: "Ingreso Vehicular", pos: { x: 30, y: 20 }, status: "pending", time: null },
-  { id: 3, name: "Perímetro Norte", pos: { x: 60, y: 35 }, status: "pending", time: null },
-  { id: 4, name: "SUM / Amenities", pos: { x: 80, y: 60 }, status: "pending", time: null },
+  {
+    id: 1,
+    name: "Garita Principal",
+    pos: { x: 10, y: 10 },
+    status: "pending",
+    time: null,
+  },
+  {
+    id: 2,
+    name: "Ingreso Vehicular",
+    pos: { x: 30, y: 20 },
+    status: "pending",
+    time: null,
+  },
+  {
+    id: 3,
+    name: "Perímetro Norte",
+    pos: { x: 60, y: 35 },
+    status: "pending",
+    time: null,
+  },
+  {
+    id: 4,
+    name: "SUM / Amenities",
+    pos: { x: 80, y: 60 },
+    status: "pending",
+    time: null,
+  },
 ];
-
 
 const INITIAL_NOTIFICATIONS = [
   {
@@ -2542,87 +2565,108 @@ const GuardLprPopup = ({ data, onClose, notify, addGlobalNotification }) => {
   );
 };
 
-const GuardLprScreen = ({ setScreen, triggerLprSimulation }) => (
-  <div className="flex flex-col h-full bg-slate-50 text-slate-800">
-    <div className="p-4 border-b border-slate-200 bg-white flex items-center justify-between gap-4 shadow-sm">
-      <div className="flex items-center gap-4">
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => setScreen("dashboard")}
-        >
+const GuardLprScreen = ({ setScreen, triggerLprSimulation, addLog, notify }) => {
+  const [events, setEvents] = useState([]);
+  const [isLive, setIsLive] = useState(true);
+
+  // Generador simple de eventos mock
+  const generateMockEvent = () => {
+    const plates = ["AE 123 BC", "AD 999 XX", "AB 456 CD", "AC 777 ZZ"];
+    const types = ["Propietario", "Visita", "Proveedor"];
+    const confidence = `${Math.floor(90 + Math.random() * 10)}%`;
+
+    const e = {
+      id: Date.now(),
+      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      plate: plates[Math.floor(Math.random() * plates.length)],
+      type: types[Math.floor(Math.random() * types.length)],
+      confidence,
+    };
+
+    // FIX: ...prev (no .prev)
+    setEvents((prev) => [e, ...prev].slice(0, 6));
+
+    notify?.(`Detección LPR: ${e.plate}`, "success");
+    addLog?.("LPR", `Detección: ${e.plate} (${e.type}) conf. ${e.confidence}`);
+  };
+
+  // Stream “live” simulado
+  useEffect(() => {
+    if (!isLive) return;
+    const t = setInterval(generateMockEvent, 6000);
+    return () => clearInterval(t);
+  }, [isLive]);
+
+  return (
+    <div className="flex flex-col h-full bg-slate-50 text-slate-800 animate-fade-in-up">
+      <div className="p-4 border-b border-slate-200 bg-white flex items-center gap-4 shadow-sm">
+        <Button variant="secondary" size="sm" onClick={() => setScreen("dashboard")}>
           <ArrowLeft className="w-4 h-4" /> VOLVER
         </Button>
-        <div>
-          <h2 className="font-black text-xl text-slate-800 tracking-tight">
-            INGRESO AUTOMATIZADO
-          </h2>
-          <p className="text-xs text-slate-500 font-bold uppercase">
-            Reconocimiento Facial + LPR
-          </p>
+        <h2 className="font-black text-xl text-slate-800">MONITOR CÁMARAS LPR</h2>
+        <div className="ml-auto flex gap-2">
+          <Button
+            variant={isLive ? "secondary" : "primary"}
+            size="sm"
+            onClick={() => setIsLive((v) => !v)}
+          >
+            {isLive ? "PAUSAR" : "INICIAR"}
+          </Button>
+          <Button variant="primary" size="sm" onClick={triggerLprSimulation}>
+            SIMULAR DETECCIÓN
+          </Button>
         </div>
       </div>
-      <Button variant="black" size="sm" onClick={triggerLprSimulation}>
-        <ScanLine size={16} /> SIMULAR DETECCIÓN EN VIVO
-      </Button>
-    </div>
-    <div className="flex-1 p-6 overflow-y-auto">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {LPR_LOGS_DB.map((log) => (
-          <div
-            key={log.id}
-            className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-shadow"
-          >
-            <div className="flex">
-              <div className="w-1/3 bg-slate-100 relative">
-                <img
-                  src={log.img}
-                  alt="Capture"
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute bottom-0 left-0 w-full bg-black/60 text-white text-[10px] font-bold text-center py-1">
-                  Match: {log.confidence}
-                </div>
-              </div>
-              <div className="flex-1 p-4">
-                <div className="flex justify-between items-start mb-2">
-                  <span className="text-xs font-mono text-slate-400 font-bold">
-                    {log.time}
-                  </span>
-                  {log.type.includes("lpr") && log.type.includes("facial") ? (
-                    <span className="bg-purple-100 text-purple-700 text-[10px] font-black px-1.5 py-0.5 rounded uppercase">
-                      Dual
-                    </span>
-                  ) : log.type.includes("lpr") ? (
-                    <span className="bg-blue-100 text-blue-700 text-[10px] font-black px-1.5 py-0.5 rounded uppercase">
-                      LPR
-                    </span>
-                  ) : (
-                    <span className="bg-orange-100 text-orange-700 text-[10px] font-black px-1.5 py-0.5 rounded uppercase">
-                      Facial
-                    </span>
-                  )}
-                </div>
-                <h3 className="font-bold text-slate-800 leading-tight mb-1">
-                  {log.name}
-                </h3>
-                <p className="text-xs text-slate-500 font-medium mb-3">
-                  {log.unit}
-                </p>
-                <div className="bg-slate-50 p-2 rounded border border-slate-100 flex items-center gap-2">
-                  <Truck size={14} className="text-slate-400" />
-                  <span className="font-mono font-bold text-slate-700 tracking-wider text-sm">
-                    {log.plate}
-                  </span>
-                </div>
-              </div>
-            </div>
+
+      <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Stream */}
+        <div className="bg-slate-900 rounded-2xl overflow-hidden shadow-xl border border-slate-800">
+          <div className="p-3 flex items-center justify-between text-white border-b border-slate-800">
+            <span className="text-xs font-bold uppercase tracking-wider">
+              Cámara Principal • {isLive ? "EN VIVO" : "PAUSADO"}
+            </span>
+            <span className="text-[10px] font-mono text-emerald-400">
+              REC: {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            </span>
           </div>
-        ))}
+          <div className="aspect-video flex items-center justify-center text-slate-400 text-sm">
+            (Stream simulado)
+          </div>
+        </div>
+
+        {/* Detecciones */}
+        <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+          <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+            <h3 className="font-black text-sm uppercase tracking-wider">Detecciones Recientes</h3>
+            <span className="text-xs text-slate-400 font-medium">{events.length} eventos</span>
+          </div>
+
+          <div className="p-4 space-y-3">
+            {events.length === 0 ? (
+              <div className="text-slate-400 text-sm">Sin detecciones aún.</div>
+            ) : (
+              events.map((e) => (
+                <div
+                  key={e.id}
+                  className="p-3 rounded-xl border border-slate-200 flex items-center justify-between"
+                >
+                  <div>
+                    <div className="font-black text-slate-800">{e.plate}</div>
+                    <div className="text-xs text-slate-500">
+                      {e.type} • Conf: {e.confidence}
+                    </div>
+                  </div>
+                  <div className="text-xs font-mono text-slate-500">{e.time}</div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
+
 
 const GuardDashboard = ({
   currentUser,
@@ -2800,6 +2844,7 @@ const GuardView = ({
   addGlobalNotification,
   notifications,
   markAsRead,
+    addLog,
   openShiftReport, // <-- NUEVO
 }) => {
   const [screen, setScreen] = useState("dashboard");
@@ -2859,8 +2904,11 @@ const GuardView = ({
         <GuardLprScreen
           setScreen={setScreen}
           triggerLprSimulation={triggerLprSimulation}
+          addLog={addLog}
+          notify={notify}
         />
       )}
+
       {screen === "emergency" && (
         <GuardEmergencyScreen
           setScreen={setScreen}
