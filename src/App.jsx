@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import {
   Shield,
+  LocateFixed,
+  FileCheck,
   User,
   BarChart3,
   AlertTriangle,
@@ -65,6 +67,7 @@ import {
   X,
   Navigation,
   Crosshair,
+  ChevronLeft,
 } from "lucide-react";
 
 // --- ESTILOS GLOBALES ---
@@ -326,12 +329,16 @@ const LPR_LOGS_DB = [
   },
 ];
 
-const AMENITIES_SLOTS = [
-  { time: "10:00 - 14:00", status: "available" },
-  { time: "14:00 - 18:00", status: "booked", by: "UF 101 (Familia Lopez)" },
-  { time: "18:00 - 22:00", status: "available" },
-  { time: "22:00 - 02:00", status: "available" },
+const AMENITIES_BASE_SLOTS = [
+  { id: 1, time: "10:00 - 14:00" },
+  { id: 2, time: "14:00 - 18:00" },
+  { id: 3, time: "18:00 - 22:00" },
+  { id: 4, time: "22:00 - 02:00" },
 ];
+let RESERVATIONS_DB = {
+  "2026-01-15": [2],
+  "2026-01-20": [1, 2],
+};
 
 const INCIDENTS_DB = [
   {
@@ -397,13 +404,12 @@ const DELIVERY_PLATFORMS = [
 ];
 
 const ROUND_POINTS_DATA = [
-  { id: 1, name: "Garita Principal", status: "pending", time: null },
-  { id: 2, name: "Sala de Máquinas", status: "pending", time: null },
-  { id: 3, name: "Acceso Norte", status: "pending", time: null },
-  { id: 4, name: "Perímetro Oeste", status: "pending", time: null },
-  { id: 5, name: "Club House", status: "pending", time: null },
-  { id: 6, name: "Depósito Mantenimiento", status: "pending", time: null },
+  { id: 1, name: "Garita Principal", pos: { x: 10, y: 10 }, status: "pending", time: null },
+  { id: 2, name: "Ingreso Vehicular", pos: { x: 30, y: 20 }, status: "pending", time: null },
+  { id: 3, name: "Perímetro Norte", pos: { x: 60, y: 35 }, status: "pending", time: null },
+  { id: 4, name: "SUM / Amenities", pos: { x: 80, y: 60 }, status: "pending", time: null },
 ];
+
 
 const INITIAL_NOTIFICATIONS = [
   {
@@ -453,6 +459,7 @@ const getIcon = (name, size, className) => {
 };
 
 // --- UI COMPONENTS ---
+
 const Toast = ({ message, onClose, type = "success" }) => {
   useEffect(() => {
     const timer = setTimeout(onClose, 4000);
@@ -558,6 +565,97 @@ const BrandLogo = ({ className = "text-2xl", light = false }) => (
     </div>
   </div>
 );
+
+const SimpleCalendar = ({ selectedDate, onDateSelect, bookedDates }) => {
+  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+  const monthNames = [
+    "Enero",
+    "Febrero",
+    "Marzo",
+    "Abril",
+    "Mayo",
+    "Junio",
+    "Julio",
+    "Agosto",
+    "Septiembre",
+    "Octubre",
+    "Noviembre",
+    "Diciembre",
+  ];
+
+  const handlePrev = () => {
+    if (currentMonth === 0) {
+      setCurrentMonth(11);
+      setCurrentYear(currentYear - 1);
+    } else {
+      setCurrentMonth(currentMonth - 1);
+    }
+  };
+  const handleNext = () => {
+    if (currentMonth === 11) {
+      setCurrentMonth(0);
+      setCurrentYear(currentYear + 1);
+    } else {
+      setCurrentMonth(currentMonth + 1);
+    }
+  };
+
+  const days = [];
+  for (let i = 0; i < firstDay; i++) {
+    days.push(<div key={`empty-${i}`} className="h-10"></div>);
+  }
+  for (let i = 1; i <= daysInMonth; i++) {
+    const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(
+      2,
+      "0"
+    )}-${String(i).padStart(2, "0")}`;
+    const isSelected = selectedDate === dateStr;
+    const isBooked = bookedDates[dateStr] && bookedDates[dateStr].length >= 4;
+    days.push(
+      <button
+        key={i}
+        onClick={() => onDateSelect(dateStr)}
+        className={`h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold transition-all mx-auto ${
+          isSelected
+            ? "bg-orange-600 text-white shadow-lg scale-110"
+            : isBooked
+            ? "bg-red-100 text-red-400 cursor-not-allowed"
+            : "hover:bg-slate-100 text-slate-700"
+        }`}
+        disabled={isBooked}
+      >
+        {i}
+      </button>
+    );
+  }
+
+  return (
+    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+      <div className="flex justify-between items-center mb-4">
+        <button onClick={handlePrev} className="p-1 hover:bg-slate-100 rounded">
+          <ChevronLeft size={20} />
+        </button>
+        <span className="font-black text-slate-800 uppercase">
+          {monthNames[currentMonth]} {currentYear}
+        </span>
+        <button onClick={handleNext} className="p-1 hover:bg-slate-100 rounded">
+          <ChevronRight size={20} />
+        </button>
+      </div>
+      <div className="grid grid-cols-7 gap-1 text-center mb-2">
+        {["D", "L", "M", "M", "J", "V", "S"].map((d) => (
+          <span key={d} className="text-xs font-bold text-slate-400">
+            {d}
+          </span>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-y-2">{days}</div>
+    </div>
+  );
+};
 
 const ResidentSelector = ({ onSelect, selected }) => {
   const [search, setSearch] = useState("");
@@ -1054,6 +1152,99 @@ const ReportsModule = ({ notify }) => {
 };
 
 // --- MÓDULOS DE GUARDIA ---
+
+// --- COMPONENTE: REPORTE DE CIERRE DE TURNO ---
+const ShiftReportModal = ({
+  onClose,
+  onConfirm,
+  guardName,
+  logs = [],
+  setLogs,
+}) => {
+  const handleConfirm = () => {
+    const report = {
+      id: Date.now(),
+      guardName,
+      createdAt: new Date().toISOString(),
+      logs,
+      // plus: texto de observaciones, firma, etc.
+    };
+
+    if (typeof onConfirm === "function") onConfirm(report);
+    else onClose?.();
+  };
+
+  return (
+    <div className="fixed inset-0 z-[200] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in-up">
+      <div className="bg-white w-full max-w-2xl h-[80vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden relative">
+        <div className="bg-slate-800 p-6 flex justify-between items-center">
+          <div>
+            <h2 className="text-white text-xl font-black uppercase tracking-wider flex items-center gap-2">
+              <FileCheck className="text-emerald-400" /> Reporte de Cierre de
+              Turno
+            </h2>
+            <p className="text-slate-400 text-xs mt-1">
+              Libro de Novedades Digital
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-white font-bold text-sm">Oficial Roberts</p>
+            <p className="text-slate-400 text-xs">
+              Turno Día • {new Date().toLocaleDateString()}
+            </p>
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
+          {logs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-slate-400 space-y-4">
+              <ClipboardList size={64} className="opacity-20" />
+              <p className="font-bold">
+                Sin actividad registrada en este turno.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <h3 className="text-xs font-black text-slate-500 uppercase mb-4">
+                Cronología de Eventos
+              </h3>
+              {logs.map((log, idx) => (
+                <div
+                  key={idx}
+                  className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm flex gap-4"
+                >
+                  <span className="font-mono text-xs font-bold text-slate-400 min-w-[60px]">
+                    {log.time}
+                  </span>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[10px] font-black uppercase bg-slate-100 px-2 py-0.5 rounded text-slate-600">
+                        {log.type}
+                      </span>
+                      <h4 className="text-sm font-bold text-slate-800">
+                        {log.detail}
+                      </h4>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="p-6 border-t border-slate-200 bg-white flex justify-end gap-4">
+          <Button variant="ghost" onClick={onClose}>
+            CANCELAR
+          </Button>
+          <Button
+            onClick={handleConfirm}
+            className="bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200"
+          >
+            <Send size={18} /> CONFIRMAR Y ENVIAR
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // 4. MÓDULO DE TAREAS PENDIENTES / RELEVOS
 const GuardTasksScreen = ({ setScreen, notify }) => {
@@ -1859,18 +2050,64 @@ const GuardPackageScreen = ({ setScreen, notify }) => {
 };
 
 // Módulo de Rondas
-const GuardRoundsScreen = ({ setScreen, notify }) => {
+const GuardRoundsScreen = ({ setScreen, notify, addLog }) => {
   const [points, setPoints] = useState(ROUND_POINTS_DATA);
 
+  const getDistance = (p1, p2) => {
+    if (!p1 || !p2) return Number.POSITIVE_INFINITY; // o null
+    return Math.hypot(p1.x - p2.x, p1.y - p2.y);
+  };
+
   const checkPoint = (id) => {
-    setPoints(
-      points.map((p) =>
+    const targetPoint = points.find((p) => p.id === id);
+
+    if (!targetPoint?.pos) {
+      console.warn("Checkpoint inválido:", targetPoint);
+      notify?.("Seleccioná un punto válido antes de marcar.", "error");
+      return;
+    }
+
+    if (!userLocation) {
+      console.warn("userLocation undefined");
+      notify?.("Ubicación no disponible.", "error");
+      return;
+    }
+
+    const distance = getDistance(userLocation, targetPoint.pos);
+
+    if (distance > 15) {
+      notify(
+        `ERROR: Estás demasiado lejos de ${targetPoint.name}. Acércate para validar.`,
+        "error"
+      );
+      addLog?.(
+        "ALERTA",
+        `Intento de validación fallida (fuera de rango) en ${targetPoint.name}`
+      );
+      return;
+    }
+
+    setPoints((prev) =>
+      prev.map((p) =>
         p.id === id
           ? { ...p, status: "checked", time: new Date().toLocaleTimeString() }
           : p
       )
     );
-    notify("Punto de control verificado.", "success");
+
+    notify?.("Punto de control verificado correctamente.", "success");
+    addLog?.("RONDA", `Punto verificado: ${targetPoint.name} (GPS OK)`);
+  };
+  const [userLocation, setUserLocation] = useState(
+    ROUND_POINTS_DATA[0]?.pos ?? { x: 10, y: 10 }
+  );
+
+  const teleportGuard = (targetPos) => {
+    if (!targetPos) {
+      console.warn("Teleport target inválido:", targetPos);
+      return;
+    }
+    setUserLocation(targetPos);
   };
 
   return (
@@ -1883,10 +2120,12 @@ const GuardRoundsScreen = ({ setScreen, notify }) => {
         >
           <ArrowLeft className="w-4 h-4" /> VOLVER
         </Button>
-        <h2 className="font-black text-xl text-slate-800">RONDAS ACTIVAS</h2>
+        <h2 className="font-black text-xl text-slate-800">
+          RONDAS ACTIVAS (GPS)
+        </h2>
       </div>
-      <div className="p-6 flex-1 overflow-y-auto">
-        <div className="max-w-2xl mx-auto space-y-4">
+      <div className="flex-1 overflow-y-auto p-6 flex flex-col md:flex-row gap-6">
+        <div className="flex-1 space-y-4">
           {points.map((point) => (
             <div
               key={point.id}
@@ -1924,8 +2163,12 @@ const GuardRoundsScreen = ({ setScreen, notify }) => {
                 </div>
               </div>
               {point.status === "pending" && (
-                <Button size="sm" onClick={() => checkPoint(point.id)}>
-                  MARCAR
+                <Button
+                  size="sm"
+                  onClick={() => checkPoint(point.id)}
+                  className="flex gap-2"
+                >
+                  <MapPin size={16} /> MARCAR POSICIÓN
                 </Button>
               )}
               {point.status === "checked" && (
@@ -1933,6 +2176,41 @@ const GuardRoundsScreen = ({ setScreen, notify }) => {
               )}
             </div>
           ))}
+        </div>
+        <div className="w-full md:w-1/3 bg-slate-800 p-6 rounded-xl text-white shadow-xl h-fit">
+          <h3 className="font-bold text-sm uppercase mb-4 flex items-center gap-2">
+            <LocateFixed size={18} className="text-emerald-400" /> Simular GPS
+            Guardia
+          </h3>
+          <p className="text-xs text-slate-400 mb-4">
+            Para probar la validación, "muévase" virtualmente a los puntos:
+          </p>
+          <div className="grid grid-cols-1 gap-2">
+            {ROUND_POINTS_DATA.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => teleportGuard(p.pos)}
+                className="..."
+              >
+                <span>Ir a: {p.name}</span>
+                <Navigation size={12} className="text-emerald-400" />
+              </button>
+            ))}
+
+            <button
+              onClick={() => teleportGuard({ x: 0, y: 0 })}
+              className="text-left text-xs font-bold py-2 px-3 bg-red-900/50 hover:bg-red-900 rounded transition-colors border border-red-800 mt-2 text-red-200"
+            >
+              Simular: Ubicación Lejana (Error)
+            </button>
+          </div>
+          <div className="mt-4 pt-4 border-t border-slate-700">
+            <p className="text-[10px] font-mono text-emerald-400">
+              COORDENADAS ACTUALES:
+              <br />
+              X: {userLocation.x} | Y: {userLocation.y}
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -2352,6 +2630,7 @@ const GuardDashboard = ({
   onBack,
   setScreen,
   addGlobalNotification,
+  openShiftReport,
   notifications,
 }) => {
   // Calcular notificaciones no leídas
@@ -2399,8 +2678,8 @@ const GuardDashboard = ({
               </span>
             )}
           </button>
-          <Button variant="secondary" size="md" onClick={onBack}>
-            Cerrar Turno
+          <Button variant="secondary" size="md" onClick={openShiftReport}>
+            Cerrar turno
           </Button>
         </div>
       </div>
@@ -2514,27 +2793,97 @@ const GuardDashboard = ({
   );
 };
 
-const GuardView = ({ onBack, currentUser, notify, addGlobalNotification, notifications, markAsRead }) => {
-  const [screen, setScreen] = useState('dashboard'); 
+const GuardView = ({
+  onBack,
+  currentUser,
+  notify,
+  addGlobalNotification,
+  notifications,
+  markAsRead,
+  openShiftReport, // <-- NUEVO
+}) => {
+  const [screen, setScreen] = useState("dashboard");
   const [lprPopupData, setLprPopupData] = useState(null);
 
   const triggerLprSimulation = () => {
-      const mockEvent = { name: "Carlos Ruiz", unit: "UF 505", plate: "AD 999 XX", photo: "https://placehold.co/150x150/e2e8f0/64748b?text=CR", match: "98%", type: "Propietario" };
-      setLprPopupData(mockEvent);
+    const mockEvent = {
+      name: "Carlos Ruiz",
+      unit: "UF 505",
+      plate: "AD 999 XX",
+      photo: "https://placehold.co/150x150/e2e8f0/64748b?text=CR",
+      match: "98%",
+      type: "Propietario",
+    };
+    setLprPopupData(mockEvent);
   };
 
   return (
     <div className="h-full w-full relative">
-        {screen === 'dashboard' && <GuardDashboard currentUser={currentUser} notify={notify} onBack={onBack} setScreen={setScreen} addGlobalNotification={addGlobalNotification} notifications={notifications} />}
-        {screen === 'supplier' && <GuardSupplierWizard setScreen={setScreen} notify={notify} />}
-        {screen === 'rounds' && <GuardRoundsScreen setScreen={setScreen} notify={notify} addGlobalNotification={addGlobalNotification} />}
-        {screen === 'package' && <GuardPackageScreen setScreen={setScreen} currentUser={currentUser} notify={notify} addGlobalNotification={addGlobalNotification} />}
-        {screen === 'visits' && <GuardVisitsScreen setScreen={setScreen} notify={notify} addGlobalNotification={addGlobalNotification} />}
-        {screen === 'lpr' && <GuardLprScreen setScreen={setScreen} triggerLprSimulation={triggerLprSimulation} />}
-        {screen === 'emergency' && <GuardEmergencyScreen setScreen={setScreen} notify={notify} addGlobalNotification={addGlobalNotification} />}
-        {screen === 'notifications' && <GuardNotificationCenter notifications={notifications} setScreen={setScreen} markAsRead={markAsRead} />}
-        
-        {lprPopupData && <GuardLprPopup data={lprPopupData} onClose={() => setLprPopupData(null)} notify={notify} addGlobalNotification={addGlobalNotification} />}
+      {screen === "dashboard" && (
+        <GuardDashboard
+          currentUser={currentUser}
+          notify={notify}
+          onBack={onBack}
+          setScreen={setScreen}
+          addGlobalNotification={addGlobalNotification}
+          openShiftReport={openShiftReport} // <-- PASO DIRECTO
+          notifications={notifications}
+        />
+      )}
+      {screen === "supplier" && (
+        <GuardSupplierWizard setScreen={setScreen} notify={notify} />
+      )}
+      {screen === "rounds" && (
+        <GuardRoundsScreen
+          setScreen={setScreen}
+          notify={notify}
+          addGlobalNotification={addGlobalNotification}
+        />
+      )}
+      {screen === "package" && (
+        <GuardPackageScreen
+          setScreen={setScreen}
+          currentUser={currentUser}
+          notify={notify}
+          addGlobalNotification={addGlobalNotification}
+        />
+      )}
+      {screen === "visits" && (
+        <GuardVisitsScreen
+          setScreen={setScreen}
+          notify={notify}
+          addGlobalNotification={addGlobalNotification}
+        />
+      )}
+      {screen === "lpr" && (
+        <GuardLprScreen
+          setScreen={setScreen}
+          triggerLprSimulation={triggerLprSimulation}
+        />
+      )}
+      {screen === "emergency" && (
+        <GuardEmergencyScreen
+          setScreen={setScreen}
+          notify={notify}
+          addGlobalNotification={addGlobalNotification}
+        />
+      )}
+      {screen === "notifications" && (
+        <GuardNotificationCenter
+          notifications={notifications}
+          setScreen={setScreen}
+          markAsRead={markAsRead}
+        />
+      )}
+
+      {lprPopupData && (
+        <GuardLprPopup
+          data={lprPopupData}
+          onClose={() => setLprPopupData(null)}
+          notify={notify}
+          addGlobalNotification={addGlobalNotification}
+        />
+      )}
     </div>
   );
 };
@@ -3253,6 +3602,29 @@ const ResidentAmenitiesScreen = ({
       priority: "normal",
     });
   };
+  // Gestión de fechas
+  const [currentDate, setCurrentDate] = useState(null);
+  const [slots, setSlots] = useState(AMENITIES_BASE_SLOTS);
+
+  const handleDateSelect = (date) => {
+    setCurrentDate(date);
+    const booked = RESERVATIONS_DB[date] || [];
+    const updatedSlots = AMENITIES_BASE_SLOTS.map((slot) => ({
+      ...slot,
+      status: booked.includes(slot.id) ? "booked" : "available",
+    }));
+    setSlots(updatedSlots);
+  };
+
+  const handleConfirmBooking = (slot) => {
+    const booked = RESERVATIONS_DB[currentDate] || [];
+    RESERVATIONS_DB[currentDate] = [...booked, slot.id];
+    const updatedSlots = slots.map((s) =>
+      s.id === slot.id ? { ...s, status: "booked" } : s
+    );
+    setSlots(updatedSlots);
+    handleBooking(slot);
+  };
 
   return (
     <div className="p-4 bg-white h-full overflow-y-auto flex flex-col">
@@ -3275,44 +3647,58 @@ const ResidentAmenitiesScreen = ({
             <p className="text-xs text-slate-500">Capacidad: 50 personas</p>
           </div>
         </div>
-        <div className="space-y-4">
-          <h3 className="text-sm font-bold text-slate-600 uppercase">
-            Horarios para Hoy
-          </h3>
-          {AMENITIES_SLOTS.map((slot, index) => (
-            <div
-              key={index}
-              className={`p-4 rounded-lg border-2 flex justify-between items-center ${
-                slot.status === "available"
-                  ? "border-slate-100 bg-white"
-                  : "border-slate-100 bg-slate-50 opacity-60"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Clock size={16} className="text-slate-400" />
-                <span
-                  className={`font-bold ${
-                    slot.status === "available"
-                      ? "text-slate-800"
-                      : "text-slate-400 line-through"
-                  }`}
-                >
-                  {slot.time}
-                </span>
+        <SimpleCalendar
+          selectedDate={currentDate}
+          onDateSelect={handleDateSelect}
+          bookedDates={RESERVATIONS_DB}
+        />
+        {currentDate && (
+          <div className="space-y-4 animate-fade-in-up">
+            <h3 className="text-sm font-bold text-slate-600 uppercase">
+              Horarios para el {currentDate}
+            </h3>
+            {slots.map((slot) => (
+              <div
+                key={slot.id}
+                className={`p-4 rounded-lg border-2 flex justify-between items-center ${
+                  slot.status === "available"
+                    ? "border-slate-100 bg-white"
+                    : "border-slate-100 bg-slate-50 opacity-60"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Clock size={16} className="text-slate-400" />
+                  <span
+                    className={`font-bold ${
+                      slot.status === "available"
+                        ? "text-slate-800"
+                        : "text-slate-400 line-through"
+                    }`}
+                  >
+                    {slot.time}
+                  </span>
+                </div>
+                {slot.status === "available" ? (
+                  <button
+                    onClick={() => handleConfirmBooking(slot)}
+                    className="px-3 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded hover:bg-emerald-200"
+                  >
+                    RESERVAR
+                  </button>
+                ) : (
+                  <span className="text-xs font-bold text-red-400">
+                    OCUPADO
+                  </span>
+                )}
               </div>
-              {slot.status === "available" ? (
-                <button
-                  onClick={() => handleBooking(slot)}
-                  className="px-3 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded hover:bg-emerald-200"
-                >
-                  RESERVAR
-                </button>
-              ) : (
-                <span className="text-xs font-bold text-red-400">OCUPADO</span>
-              )}
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
+        {!currentDate && (
+          <div className="text-center text-slate-400 text-sm py-4 italic">
+            Seleccione una fecha para ver disponibilidad.
+          </div>
+        )}
       </div>
     </div>
   );
@@ -4423,6 +4809,7 @@ export default function App() {
   const [globalNotifications, setGlobalNotifications] = useState(
     INITIAL_NOTIFICATIONS
   );
+  const [showShiftReport, setShowShiftReport] = useState(false);
 
   const showNotification = (message, type = "success") => {
     setNotification({ message, type });
@@ -4479,6 +4866,9 @@ export default function App() {
               addGlobalNotification={addGlobalNotification}
               notifications={globalNotifications}
               markAsRead={markAsRead}
+              addLog={addLog}
+              shiftLogs={shiftLogs}
+              openShiftReport={() => setShowShiftReport(true)}
             />
           )}
 
@@ -4607,9 +4997,18 @@ export default function App() {
       </div>
     );
   };
+  const [shiftLogs, setShiftLogs] = useState([]);
+
+  const addLog = (type, detail) => {
+    const time = new Date().toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    setShiftLogs((prev) => [{ time, type, detail }, ...prev]);
+  };
 
   return (
-    <>
+    <div>
       <GlobalStyles />
       {notification && (
         <Toast
@@ -4619,6 +5018,20 @@ export default function App() {
         />
       )}
       {renderContent()}
-    </>
+
+      {showShiftReport && (
+        <ShiftReportModal
+          onClose={() => setShowShiftReport(false)}
+          onConfirm={(report) => {
+            // ejemplo: guardar reporte en estado (o mandar a backend)
+            setShiftLogs((prev) => [...prev, report]);
+            setShowShiftReport(false);
+            showNotification("Cierre de turno registrado", "success");
+          }}
+          guardName={currentUser}
+          logs={shiftLogs}
+        />
+      )}
+    </div>
   );
 }
