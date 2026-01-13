@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
 import {
   Shield,
+  PhoneCall,
   LocateFixed,
   ChevronUp,
   FileCheck,
   User,
+  PlayCircle,
   BarChart3,
   AlertTriangle,
   Package,
@@ -145,65 +147,161 @@ const EMERGENCY_DATA = {
     label: "INTRUSIÓN",
     color: "orange",
     icon: "Footprints",
-    procedure:
-      "1. Bloquear acceso afectado.\n2. Visualizar cámaras perimetrales.\n3. Enviar patrulla al sector.\n4. Llamar al 911 si se confirma visualmente.",
+    call911: true,
+    steps: [
+      "Activar control de accesos: bloquear ingreso/salida del sector afectado.",
+      "Verificar cámaras perimetrales y registrar hora y ubicación.",
+      "Enviar móvil/patrulla al punto manteniendo distancia segura.",
+      "Avisar a administración y coordinar apoyo interno.",
+      "Evitar confrontación directa; priorizar observación y contención.",
+      "Indicar a residentes cercanos que permanezcan dentro y cierren accesos.",
+      "Preservar evidencia: no manipular objetos, no borrar grabaciones.",
+      "Si se confirma presencia o riesgo, llamar al 911 y seguir instrucciones.",
+      "Documentar: descripción, vestimenta, dirección de desplazamiento.",
+    ],
   },
+
   robo: {
     label: "ROBO",
     color: "orange",
     icon: "Skull",
-    procedure:
-      "1. Asistir a la víctima si es seguro.\n2. Cerrar todas las salidas del barrio (Protocolo Cepo).\n3. Llamar al 911 inmediatamente.\n4. Resguardar registros de cámaras.",
+    call911: true,
+    steps: [
+      "Evaluar seguridad: no exponerse ni confrontar.",
+      "Asistir a la víctima si es seguro y solicitar apoyo médico si aplica.",
+      "Implementar cierre controlado de accesos según protocolo interno.",
+      "Confirmar ubicación exacta, descripción del hecho y sospechosos.",
+      "Preservar cámaras y registros: marcar intervalo horario y accesos.",
+      "Mantener comunicación con administración (un canal único).",
+      "Aislar la zona del incidente para evitar contaminación de evidencia.",
+      "Llamar al 911 si el hecho está en curso o hay riesgo inmediato.",
+      "Registrar testimonios básicos y datos de contacto de la víctima.",
+    ],
   },
+
   sismo: {
     label: "SISMO",
     color: "orange",
     icon: "Activity",
-    procedure:
-      "1. Abrir portones automáticos manualmente.\n2. Cortar suministros de gas principales.\n3. Dirigir personas a zonas seguras (Plaza Central).\n4. Evaluar daños estructurales visibles.",
+    call911: false,
+    steps: [
+      "Verificar estado general del barrio y puntos críticos (garitas, portones).",
+      "Revisar visualmente daños estructurales evidentes sin ingresar a zonas inseguras.",
+      "Cortar suministro de gas en caso de olor/ruptura visible (si corresponde).",
+      "Asegurar accesos para servicios de emergencia (portones operativos).",
+      "Indicar a residentes evitar ascensores y zonas con mampostería dañada.",
+      "Señalizar áreas peligrosas y restringir circulación.",
+      "Coordinar con administración inspección técnica posterior.",
+      "Registrar reportes de daños y lesionados (si existieran).",
+    ],
   },
+
   fallas: {
     label: "FALLAS ESTRUCT.",
     color: "orange",
     icon: "Hammer",
-    procedure:
-      "1. Aislar la zona de derrumbe o falla.\n2. Evacuar unidades colindantes.\n3. Cortar servicios en el sector.\n4. Llamar a Bomberos/Defensa Civil.",
+    call911: true,
+    steps: [
+      "Aislar el área: delimitar perímetro y evitar tránsito.",
+      "Evacuar unidades colindantes si hay riesgo de desprendimiento.",
+      "Cortar servicios del sector si es necesario (gas/energía/agua) coordinando con administración.",
+      "Verificar si hay heridos y solicitar asistencia médica si corresponde.",
+      "No permitir ingreso al área dañada hasta evaluación técnica.",
+      "Registrar imágenes/ubicación y hora del hallazgo.",
+      "Coordinar con Defensa Civil/Bomberos según gravedad.",
+      "Llamar al 911 si hay riesgo inmediato o heridos.",
+      "Mantener guardia en perímetro hasta relevo.",
+    ],
   },
+
   gas: {
     label: "FUGA DE GAS",
     color: "orange",
     icon: "Wind",
-    procedure:
-      "1. NO accionar interruptores eléctricos.\n2. Evacuar sector inmediato.\n3. Cerrar llave de paso general.\n4. Llamar a ECOGAS y Bomberos.",
+    call911: true,
+    steps: [
+      "No accionar interruptores eléctricos ni generar chispas en el área.",
+      "Evacuar el perímetro inmediato y ventilar si es posible sin riesgo.",
+      "Cortar el suministro desde llave general si está accesible y seguro.",
+      "Restringir el tránsito vehicular y peatonal cercano.",
+      "Notificar a administración y coordinar comunicación a residentes.",
+      "Identificar origen aproximado (sin exposición).",
+      "Llamar al 911 si hay fuerte olor, síntomas o riesgo de explosión.",
+      "Contactar a la distribuidora (ECOGAS) según protocolo.",
+      "Registrar hora, unidad/sector y acciones realizadas.",
+    ],
   },
 
   incendio: {
     label: "INCENDIO",
     color: "red",
     icon: "Flame",
-    procedure:
-      "1. Llamar a Bomberos INMEDIATAMENTE.\n2. Activar alarma sonora general.\n3. Despejar acceso para autobomba.\n4. Usar extintores solo si el fuego es pequeño.",
+    call911: true,
+    steps: [
+      "Confirmar ubicación exacta (unidad/sector) y tipo de fuego/humo.",
+      "Ordenar evacuación del área afectada y mantener rutas libres.",
+      "Asegurar acceso para bomberos (portones/ingresos despejados).",
+      "Cortar energía/gas del sector si está indicado y es seguro.",
+      "Utilizar extintor solo si el fuego es incipiente y hay salida segura.",
+      "Evitar inhalación de humo; priorizar resguardo de personas.",
+      "Llamar al 911 inmediatamente e informar: ubicación, magnitud y accesos.",
+      "Coordinar punto de encuentro y conteo básico de personas.",
+      "Preservar perímetro y registrar tiempos del evento.",
+    ],
   },
+
   bomba: {
     label: "AMENAZA BOMBA",
     color: "red",
     icon: "Bomb",
-    procedure:
-      "1. NO usar radios ni celulares cerca del objeto.\n2. Evacuar perímetro de 100 metros.\n3. Llamar a Brigada de Explosivos (911).\n4. No tocar ni mover paquetes sospechosos.",
+    call911: true,
+    steps: [
+      "No manipular paquetes/objetos sospechosos ni acercarse innecesariamente.",
+      "Aislar perímetro seguro (según ubicación y riesgo).",
+      "Evitar pánico: dar instrucciones claras y breves.",
+      "Evacuar por rutas alejadas del objeto y evitar aglomeraciones.",
+      "No utilizar dispositivos de comunicación cerca del objeto si hay sospecha concreta.",
+      "Coordinar accesos para fuerzas de seguridad.",
+      "Llamar al 911 y solicitar brigada especializada.",
+      "Registrar descripción del objeto y ubicación exacta.",
+      "Mantener control de accesos hasta arribo de autoridades.",
+    ],
   },
+
   quimico: {
     label: "SUST. PELIGROSAS",
     color: "red",
     icon: "Biohazard",
-    procedure:
-      "1. Evacuar en dirección contraria al viento.\n2. Evitar contacto con la sustancia.\n3. Alertar a hospitales cercanos.\n4. Usar EPP completo si es necesario acercarse.",
+    call911: true,
+    steps: [
+      "Identificar zona y evitar contacto con la sustancia.",
+      "Evacuar a favor de rutas seguras (alejándose de vapores).",
+      "Aislar el área y restringir circulación.",
+      "Notificar a administración y coordinar aviso interno.",
+      "No intentar limpieza sin equipo y capacitación.",
+      "Si hay exposición, solicitar asistencia médica inmediata.",
+      "Llamar al 911 si hay riesgo para personas o fuga activa.",
+      "Registrar recipiente/etiquetas visibles a distancia.",
+      "Esperar brigada especializada y seguir instrucciones.",
+    ],
   },
+
   tirador: {
     label: "TIRADOR ACTIVO",
     color: "red",
     icon: "Crosshair",
-    procedure:
-      "1. Protocolo LOCKDOWN: Nadie entra, nadie sale.\n2. Residentes deben permanecer en sus casas, luces apagadas.\n3. Notificar ubicación del tirador al 911 constante.\n4. Protegerse (Correr, Esconderse, Pelear).",
+    call911: true,
+    steps: [
+      "Activar LOCKDOWN: cerrar accesos del barrio y restringir circulación interna.",
+      "Indicar a residentes resguardo inmediato dentro de viviendas (puertas cerradas).",
+      "Evitar confrontación; mantener distancia y cobertura.",
+      "Confirmar ubicación y dirección de desplazamiento si es posible sin riesgo.",
+      "Coordinar un solo canal de comunicación interno con administración.",
+      "Asegurar rutas de ingreso para fuerzas de seguridad.",
+      "Llamar al 911 de inmediato y mantener línea para actualizaciones.",
+      "No difundir información no verificada para evitar pánico.",
+      "Registrar tiempos, ubicaciones y testimonios cuando sea seguro.",
+    ],
   },
 };
 
@@ -284,49 +382,6 @@ const AUTHORIZED_VISITS_DB = [
     date: "2023-10-26",
     time: "--",
     status: "Pendiente",
-  },
-];
-
-const LPR_LOGS_DB = [
-  {
-    id: 1,
-    time: "14:42:15",
-    name: "Juan Pérez",
-    unit: "UF 402",
-    plate: "AE 123 ZZ",
-    type: "facial_lpr",
-    confidence: "98%",
-    img: "https://placehold.co/100x100/e2e8f0/64748b?text=JP",
-  },
-  {
-    id: 2,
-    time: "14:35:20",
-    name: "María Gonzalez",
-    unit: "UF 105",
-    plate: "AB 456 CC",
-    type: "lpr",
-    confidence: "99%",
-    img: "https://placehold.co/100x100/e2e8f0/64748b?text=MG",
-  },
-  {
-    id: 3,
-    time: "14:10:05",
-    name: "Carlos Ruiz",
-    unit: "UF 505",
-    plate: "AD 999 XX",
-    type: "facial",
-    confidence: "94%",
-    img: "https://placehold.co/100x100/e2e8f0/64748b?text=CR",
-  },
-  {
-    id: 4,
-    time: "13:55:12",
-    name: "Empresa Tech",
-    unit: "Oficina 12",
-    plate: "AA 000 BB",
-    type: "lpr",
-    confidence: "97%",
-    img: "https://placehold.co/100x100/e2e8f0/64748b?text=Tech",
   },
 ];
 
@@ -1184,6 +1239,7 @@ const ShiftReportModal = ({
   guardName,
   logs = [],
   tasks = [],
+  addGlobalNotification,
 }) => {
   const isPending = (s) => {
     const v = String(s ?? "pending").toLowerCase();
@@ -1202,6 +1258,41 @@ const ShiftReportModal = ({
       .slice(0, 5)
       .map((t) => t.title ?? t.name ?? "Sin título"),
   };
+  const taskCompleted = (tasks ?? []).filter(
+    (t) => String(t.status ?? "").toLowerCase() === "completed"
+  ).length;
+  const taskActive = (tasks ?? []).filter(
+    (t) => String(t.status ?? "").toLowerCase() === "active"
+  ).length;
+
+  const stats = [
+    {
+      label: "Tareas completadas",
+      value: taskCompleted,
+      tone: "emerald",
+      icon: "CheckCircle",
+    },
+    {
+      label: "Pendientes",
+      value: summary.pendingCount,
+      tone: "orange",
+      icon: "ClipboardList",
+    },
+    {
+      label: "En curso",
+      value: taskActive,
+      tone: "blue",
+      icon: "PlayCircle",
+    },
+    {
+      label: "Eventos del turno",
+      value: logs.length,
+      tone: "slate",
+      icon: "Activity",
+    },
+  ];
+
+  const [finalNotes, setFinalNotes] = useState("");
 
   const handleConfirm = () => {
     const withSummaryLogs =
@@ -1225,11 +1316,23 @@ const ShiftReportModal = ({
       createdAt: new Date().toISOString(),
       logs: withSummaryLogs, // <-- usar logs con resumen
       tasksSummary: summary,
+      finalNotes: finalNotes.trim() || null,
     };
+
+    if (finalNotes.trim()) {
+      addGlobalNotification?.({
+        type: "alert",
+        title: "Cierre de turno: Observaciones",
+        message: `Guardia: ${guardName}\n\n${finalNotes.trim()}`,
+        priority: "high",
+      });
+    }
 
     if (typeof onConfirm === "function") onConfirm(report);
     else onClose?.();
   };
+
+  const alertsCount = logs.filter((l) => l.type === "ALERTA").length;
 
   return (
     <div className="fixed inset-0 z-[200] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in-up">
@@ -1252,11 +1355,72 @@ const ShiftReportModal = ({
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
+          {/* ✅ 0) Resumen rápido (stats) */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            {/* Tile 1 */}
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center">
+              <CheckCircle className="w-6 h-6 text-emerald-600 mx-auto mb-2" />
+              <div className="text-2xl font-black text-emerald-700">
+                {taskCompleted}
+              </div>
+              <div className="text-xs text-emerald-600 font-medium">
+                Tareas Completadas
+              </div>
+            </div>
+
+            {/* Tile 2 */}
+            <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-center">
+              <ClipboardList className="w-6 h-6 text-orange-600 mx-auto mb-2" />
+              <div className="text-2xl font-black text-orange-700">
+                {summary.pendingCount}
+              </div>
+              <div className="text-xs text-orange-600 font-medium">
+                Pendientes
+              </div>
+            </div>
+
+            {/* Tile 3 */}
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
+              <PlayCircle className="w-6 h-6 text-blue-600 mx-auto mb-2" />
+              <div className="text-2xl font-black text-blue-700">
+                {taskActive}
+              </div>
+              <div className="text-xs text-blue-600 font-medium">En curso</div>
+            </div>
+
+            {/* Tile 4 */}
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
+              <AlertTriangle className="w-6 h-6 text-slate-600 mx-auto mb-2" />
+              <div className="text-2xl font-black text-slate-700">
+                {alertsCount}
+              </div>
+              <div className="text-xs text-slate-600 font-medium">
+                Alertas del turno
+              </div>
+            </div>
+          </div>
+
           {/* ✅ 1) Resumen SIEMPRE visible */}
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-4">
             <h3 className="text-xs font-black text-slate-500 uppercase mb-2">
               Resumen de Pendientes (al cierre)
             </h3>
+
+            {/* Observaciones finales */}
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-4">
+              <h3 className="text-xs font-black text-slate-500 uppercase mb-2">
+                Observaciones finales (opcional)
+              </h3>
+              <textarea
+                value={finalNotes}
+                onChange={(e) => setFinalNotes(e.target.value)}
+                placeholder="Escribí observaciones relevantes para Administración (incidentes, pendientes críticos, novedades, etc.)"
+                className="w-full min-h-[110px] p-3 rounded-lg border border-slate-200 bg-slate-50 text-slate-800 text-sm outline-none focus:border-orange-500"
+              />
+              <p className="text-[11px] text-slate-400 mt-2">
+                Se adjuntará al reporte de cierre de turno.
+              </p>
+            </div>
 
             {pending.length === 0 ? (
               <p className="text-sm text-emerald-700 font-bold">
@@ -1338,6 +1502,9 @@ const ShiftReportModal = ({
 
 // 4. MÓDULO DE TAREAS PENDIENTES / RELEVOS
 const GuardTasksScreen = ({ setScreen, notify, addLog, tasks, setTasks }) => {
+  const [tab, setTab] = useState("all"); // "pending" | "active" | "completed"
+  const getStatus = (t) => t.status ?? "pending";
+
   const normalizeTask = (t) => ({
     id: t.id ?? Date.now(),
     title: t.title ?? t.name ?? "Sin título",
@@ -1374,17 +1541,71 @@ const GuardTasksScreen = ({ setScreen, notify, addLog, tasks, setTasks }) => {
     addLog?.("TAREA", `Nueva tarea creada: ${task.title}`);
   };
 
-  // completeTask queda igual...
+  const startTask = (id) => {
+    const taskToStart = tasks.find((t) => t.id === id);
 
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === id
+          ? {
+              ...t,
+              status: "active",
+              startedAt: new Date().toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+            }
+          : t
+      )
+    );
+
+    // Persistir mock (opcional)
+    TASKS_DB.splice(
+      0,
+      TASKS_DB.length,
+      ...TASKS_DB.map((t) =>
+        t.id === id
+          ? {
+              ...t,
+              status: "active",
+              startedAt: new Date().toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+            }
+          : t
+      )
+    );
+
+    notify("Tarea iniciada.", "success");
+    const title = taskToStart?.title ?? taskToStart?.name ?? "Sin título";
+    addLog?.("TAREA", `Tarea iniciada: ${title}`);
+  };
+
+  // completeTask queda igual...
   const completeTask = (id) => {
     const taskToComplete = tasks.find((t) => t.id === id);
 
-    const updated = tasks.map((t) =>
-      t.id === id ? { ...t, status: "completed" } : t
-    );
-    setTasks(updated);
+    if ((taskToComplete?.status ?? "pending") !== "active") {
+      return notify("Primero debés iniciar la tarea.", "warning");
+    }
 
-    // Persistir en mock DB sin reasignar
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === id
+          ? {
+              ...t,
+              status: "completed",
+              completedAt: new Date().toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+            }
+          : t
+      )
+    );
+
+    // Persistir mock (opcional)
     TASKS_DB.splice(
       0,
       TASKS_DB.length,
@@ -1392,11 +1613,119 @@ const GuardTasksScreen = ({ setScreen, notify, addLog, tasks, setTasks }) => {
     );
 
     notify("Tarea marcada como realizada.", "success");
-
-    // ✅ log correcto (con fallback)
     const title = taskToComplete?.title ?? taskToComplete?.name ?? "Sin título";
     addLog?.("TAREA", `Tarea completada: ${title}`);
   };
+  const activeTasks = tasks.filter((t) => getStatus(t) === "active");
+  const pendingTasks = tasks.filter((t) => getStatus(t) === "pending");
+  const completedTasks = tasks.filter((t) => getStatus(t) === "completed");
+
+  const visibleTasks =
+    tab === "all"
+      ? [] // en "all" no usamos visibleTasks
+      : tab === "active"
+      ? activeTasks
+      : tab === "pending"
+      ? pendingTasks
+      : completedTasks;
+
+  const statusLabel = (s) =>
+    s === "active"
+      ? "EN CURSO"
+      : s === "completed"
+      ? "COMPLETADA"
+      : "PENDIENTE";
+
+  const statusBadgeClass = (s) =>
+    s === "active"
+      ? "bg-blue-100 text-blue-700"
+      : s === "completed"
+      ? "bg-emerald-100 text-emerald-700"
+      : "bg-slate-100 text-slate-600";
+
+  const TaskCard = ({
+    task,
+    startTask,
+    completeTask,
+    statusLabel,
+    statusBadgeClass,
+  }) => (
+    <div
+      className={`bg-white p-4 rounded-xl shadow-sm border-l-4 relative group hover:shadow-md transition-all ${
+        task.priority === "high"
+          ? "border-red-500"
+          : task.priority === "normal"
+          ? "border-blue-500"
+          : "border-slate-400"
+      }`}
+    >
+      <div className="flex justify-between items-start mb-2">
+        <div className="flex items-center gap-2">
+          {task.priority === "high" && (
+            <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-red-100 text-red-700">
+              PRIORIDAD ALTA
+            </span>
+          )}
+
+          <span
+            className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${statusBadgeClass(
+              task.status
+            )}`}
+          >
+            {statusLabel(task.status)}
+          </span>
+        </div>
+
+        <span className="text-xs text-slate-400 font-bold">{task.date}</span>
+      </div>
+
+      <h4 className="font-black text-lg text-slate-800 leading-tight mb-1">
+        {task.title}
+      </h4>
+      <p className="text-sm text-slate-600 mb-3">{task.description}</p>
+
+      {task.status === "active" && task.startedAt && (
+        <p className="text-xs text-blue-600 font-bold mb-3">
+          Iniciada: {task.startedAt}
+        </p>
+      )}
+      {task.status === "completed" && task.completedAt && (
+        <p className="text-xs text-emerald-700 font-bold mb-3">
+          Finalizada: {task.completedAt}
+        </p>
+      )}
+
+      <div className="flex justify-between items-center pt-2 border-t border-slate-100 mt-2">
+        <span className="text-xs font-bold text-slate-400 uppercase">
+          Por: {task.author}
+        </span>
+
+        {task.status === "pending" && (
+          <button
+            onClick={() => startTask(task.id)}
+            className="flex items-center gap-2 text-xs font-bold bg-blue-50 text-blue-600 px-3 py-1.5 rounded hover:bg-blue-100 transition-colors uppercase"
+          >
+            ▶ INICIAR
+          </button>
+        )}
+
+        {task.status === "active" && (
+          <button
+            onClick={() => completeTask(task.id)}
+            className="flex items-center gap-2 text-xs font-bold bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded hover:bg-emerald-100 transition-colors uppercase"
+          >
+            COMPLETAR
+          </button>
+        )}
+
+        {task.status === "completed" && (
+          <span className="text-xs font-bold text-slate-400 uppercase flex items-center gap-2">
+            FINALIZADA
+          </span>
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <div className="flex flex-col h-full bg-slate-50 text-slate-800 animate-fade-in-up">
@@ -1471,85 +1800,136 @@ const GuardTasksScreen = ({ setScreen, notify, addLog, tasks, setTasks }) => {
 
         {/* LISTA DE TAREAS (DERECHA) */}
         <div className="flex-1 space-y-4">
-          <h3 className="font-black text-slate-500 uppercase text-xs">
-            Pendientes de Turnos Anteriores / Administración
-          </h3>
-          {tasks.filter((t) => t.status === "pending").length === 0 ? (
-            <div className="p-8 text-center border-2 border-dashed border-slate-300 rounded-xl text-slate-400 font-bold">
-              ¡Todo al día! No hay tareas pendientes.
-            </div>
-          ) : (
-            tasks
-              .filter((t) => t.status === "pending")
-              .map((task) => (
-                <div
-                  key={task.id}
-                  className={`bg-white p-4 rounded-xl shadow-sm border-l-4 relative group hover:shadow-md transition-all ${
-                    task.priority === "high"
-                      ? "border-red-500"
-                      : task.priority === "normal"
-                      ? "border-blue-500"
-                      : "border-slate-400"
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="font-black text-slate-500 uppercase text-xs">
+              Libro de Tareas
+            </h3>
+
+            <div className="flex gap-2">
+              {[
+                { k: "all", label: "Todas" },
+                { k: "pending", label: "Pendientes" },
+                { k: "active", label: "En curso" },
+                { k: "completed", label: "Completadas" },
+              ].map((t) => (
+                <button
+                  key={t.k}
+                  onClick={() => setTab(t.k)}
+                  className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase border transition-colors ${
+                    tab === t.k
+                      ? "bg-slate-900 text-white border-slate-900"
+                      : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
                   }`}
                 >
-                  <div className="flex justify-between items-start mb-2">
-                    <span
-                      className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${
-                        task.priority === "high"
-                          ? "bg-red-100 text-red-700"
-                          : "bg-slate-100 text-slate-600"
-                      }`}
-                    >
-                      {task.priority === "high"
-                        ? "PRIORIDAD ALTA"
-                        : "TAREA PENDIENTE"}
-                    </span>
-                    <span className="text-xs text-slate-400 font-bold">
-                      {task.date}
-                    </span>
-                  </div>
-                  <h4 className="font-black text-lg text-slate-800 leading-tight mb-1">
-                    {task.title}
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {tab === "all" ? (
+            <div className="space-y-8">
+              {/* EN CURSO */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-xs font-black uppercase text-slate-400">
+                    En curso ({activeTasks.length})
                   </h4>
-                  <p className="text-sm text-slate-600 mb-3">
-                    {task.description}
-                  </p>
-                  <div className="flex justify-between items-center pt-2 border-t border-slate-100 mt-2">
-                    <span className="text-xs font-bold text-slate-400 uppercase">
-                      Por: {task.author}
-                    </span>
-                    <button
-                      onClick={() => completeTask(task.id)}
-                      className="flex items-center gap-2 text-xs font-bold bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded hover:bg-emerald-100 transition-colors"
-                    >
-                      <CheckSquare size={14} /> MARCAR REALIZADO
-                    </button>
-                  </div>
+                  <div className="h-px flex-1 bg-slate-200 ml-3" />
                 </div>
-              ))
+
+                {activeTasks.length === 0 ? (
+                  <div className="p-6 text-center border border-dashed border-slate-300 rounded-xl text-slate-400 font-bold">
+                    No hay tareas en curso.
+                  </div>
+                ) : (
+                  activeTasks.map((task) => (
+                    <TaskCard
+                      key={task.id}
+                      task={task}
+                      startTask={startTask}
+                      completeTask={completeTask}
+                      statusLabel={statusLabel}
+                      statusBadgeClass={statusBadgeClass}
+                    />
+                  ))
+                )}
+              </div>
+
+              {/* PENDIENTES */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-xs font-black uppercase text-slate-400">
+                    Pendientes ({pendingTasks.length})
+                  </h4>
+                  <div className="h-px flex-1 bg-slate-200 ml-3" />
+                </div>
+
+                {pendingTasks.length === 0 ? (
+                  <div className="p-6 text-center border border-dashed border-slate-300 rounded-xl text-slate-400 font-bold">
+                    No hay tareas pendientes.
+                  </div>
+                ) : (
+                  pendingTasks.map((task) => (
+                    <TaskCard
+                      key={task.id}
+                      task={task}
+                      startTask={startTask}
+                      completeTask={completeTask}
+                      statusLabel={statusLabel}
+                      statusBadgeClass={statusBadgeClass}
+                    />
+                  ))
+                )}
+              </div>
+
+              {/* COMPLETADAS */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-xs font-black uppercase text-slate-400">
+                    Completadas ({completedTasks.length})
+                  </h4>
+                  <div className="h-px flex-1 bg-slate-200 ml-3" />
+                </div>
+
+                {completedTasks.length === 0 ? (
+                  <div className="p-6 text-center border border-dashed border-slate-300 rounded-xl text-slate-400 font-bold">
+                    No hay tareas completadas.
+                  </div>
+                ) : (
+                  <div className="space-y-3 opacity-70">
+                    {completedTasks.map((task) => (
+                      <TaskCard
+                        key={task.id}
+                        task={task}
+                        startTask={startTask}
+                        completeTask={completeTask}
+                        statusLabel={statusLabel}
+                        statusBadgeClass={statusBadgeClass}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : visibleTasks.length === 0 ? (
+            <div className="p-8 text-center border-2 border-dashed border-slate-300 rounded-xl text-slate-400 font-bold">
+              No hay tareas en esta categoría.
+            </div>
+          ) : (
+            visibleTasks.map((task) => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                startTask={startTask}
+                completeTask={completeTask}
+                statusLabel={statusLabel}
+                statusBadgeClass={statusBadgeClass}
+              />
+            ))
           )}
 
           {/* Tareas Completadas (Historial) */}
-          {tasks.filter((t) => t.status === "completed").length > 0 && (
-            <div className="pt-8 opacity-60">
-              <h3 className="font-bold text-slate-400 uppercase text-xs mb-2">
-                Completadas Recientemente
-              </h3>
-              {tasks
-                .filter((t) => t.status === "completed")
-                .map((task) => (
-                  <div
-                    key={task.id}
-                    className="bg-slate-50 p-3 rounded-lg border border-slate-200 flex justify-between items-center mb-2"
-                  >
-                    <span className="text-sm font-medium text-slate-500 line-through">
-                      {task.title}
-                    </span>
-                    <CheckCircle size={16} className="text-slate-400" />
-                  </div>
-                ))}
-            </div>
-          )}
         </div>
       </div>
     </div>
@@ -2486,7 +2866,12 @@ const GuardRoundsScreen = ({ setScreen, notify, addLog }) => {
 // --- PANTALLAS EXTRAÍDAS DE GUARD VIEW ---
 
 // 1. GuardEmergencyScreen (COMPLETO Y FUNCIONAL)
-const GuardEmergencyScreen = ({ setScreen, notify, addGlobalNotification }) => {
+const GuardEmergencyScreen = ({
+  setScreen,
+  notify,
+  addGlobalNotification,
+  addLog,
+}) => {
   const [selectedEmergency, setSelectedEmergency] = useState(null);
   const [showEvacuationConfirm, setShowEvacuationConfirm] = useState(false);
   const [evacuationActive, setEvacuationActive] = useState(false);
@@ -2505,6 +2890,7 @@ const GuardEmergencyScreen = ({ setScreen, notify, addGlobalNotification }) => {
       `Alerta de ${data.label} enviada a la comunidad.`,
       data.color === "red" ? "error" : "warning"
     );
+    addLog?.("ALERTA", `Emergencia reportada: ${data.label}`);
   };
 
   const triggerEvacuation = () => {
@@ -2636,6 +3022,7 @@ const GuardEmergencyScreen = ({ setScreen, notify, addGlobalNotification }) => {
               >
                 Protocolo Activo
               </div>
+
               <h2 className="text-3xl font-black mb-6 leading-none">
                 {selectedEmergency.label}
               </h2>
@@ -2644,9 +3031,30 @@ const GuardEmergencyScreen = ({ setScreen, notify, addGlobalNotification }) => {
                 <h4 className="text-slate-400 uppercase text-xs font-bold mb-4 flex items-center gap-2">
                   <Info size={16} /> Manual de Procedimiento
                 </h4>
-                <div className="space-y-3 text-sm font-medium text-slate-200 leading-relaxed whitespace-pre-line">
-                  {selectedEmergency.procedure}
+                <div className="space-y-3 text-sm font-medium text-slate-200 leading-relaxed">
+                  <ol className="space-y-2 list-decimal pl-5">
+                    {(selectedEmergency.steps ?? []).map((step, idx) => (
+                      <li key={idx} className="text-slate-200">
+                        {step}
+                      </li>
+                    ))}
+                  </ol>
                 </div>
+                {selectedEmergency.call911 && (
+                  <a
+                    href="tel:911"
+                    onClick={() =>
+                      addLog?.(
+                        "ALERTA",
+                        `Llamada sugerida a 911 por: ${selectedEmergency.label}`
+                      )
+                    }
+                    className="mt-4 w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-white text-red-700 font-black uppercase tracking-widest border-2 border-red-500 hover:bg-red-50"
+                  >
+                    <PhoneCall size={18} />
+                    LLAMAR 911
+                  </a>
+                )}
               </div>
             </div>
 
@@ -3176,6 +3584,7 @@ const GuardView = ({
           setScreen={setScreen}
           notify={notify}
           addGlobalNotification={addGlobalNotification}
+          addLog={addLog}
         />
       )}
       {screen === "notifications" && (
@@ -5459,22 +5868,26 @@ export default function App() {
             // 1) Guardar reporte (mock / futuro backend)
             setShiftLogs((prev) => [...prev, report]);
 
+            // 1) (futuro backend / storage externo)
+            // saveShiftReport(report)
+
             // 2) Cerrar modal
             setShowShiftReport(false);
 
             // 3) Feedback
             showNotification("Cierre de turno registrado", "success");
 
-            // 4) Limpieza de estado de turno
+            // 4) Limpieza de turno
             setShiftLogs([]);
-            setGuardTasks(TASKS_DB); // o [] si querés resetear todo
+            setGuardTasks(TASKS_DB); // o []
 
-            // 5) 🔴 CIERRE DE SESIÓN
+            // 5) Cierre de sesión
             resetAuth();
           }}
           guardName={currentUser}
           logs={shiftLogs}
           tasks={guardTasks}
+          addGlobalNotification={addGlobalNotification}
         />
       )}
       {isAuthenticated && currentRole === "guard" && (
