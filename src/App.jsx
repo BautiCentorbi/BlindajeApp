@@ -1211,7 +1211,7 @@ const ShiftReportModal = ({
             </p>
           </div>
           <div className="text-right">
-            <p className="text-white font-bold text-sm">Oficial Roberts</p>
+            <p className="text-white font-bold text-sm">{guardName}</p>
             <p className="text-slate-400 text-xs">
               Turno Día • {new Date().toLocaleDateString()}
             </p>
@@ -1270,15 +1270,26 @@ const ShiftReportModal = ({
 };
 
 // 4. MÓDULO DE TAREAS PENDIENTES / RELEVOS
-const GuardTasksScreen = ({ setScreen, notify }) => {
-  const [tasks, setTasks] = useState(TASKS_DB);
+const GuardTasksScreen = ({ setScreen, notify, addLog }) => {
+  const normalizeTask = (t) => ({
+    id: t.id ?? Date.now(),
+    title: t.title ?? t.name ?? "Sin título",
+    description: t.description ?? t.desc ?? "",
+    priority: t.priority ?? t.level ?? "normal",
+    status: t.status ?? "pending",
+    author: t.author ?? "Sistema",
+    date: t.date ?? "—",
+  });
+
+  const [tasks, setTasks] = useState(() => TASKS_DB.map(normalizeTask));
+
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskDesc, setNewTaskDesc] = useState("");
   const [newTaskPriority, setNewTaskPriority] = useState("normal");
 
   const handleAddTask = () => {
     if (!newTaskTitle) return;
-    const task = {
+    const task = normalizeTask({
       id: Date.now(),
       title: newTaskTitle,
       description: newTaskDesc,
@@ -1286,24 +1297,35 @@ const GuardTasksScreen = ({ setScreen, notify }) => {
       status: "pending",
       author: "Guardia Turno Actual",
       date: "Ahora",
-    };
+    });
     TASKS_DB.unshift(task); // Persistir en mock DB
     setTasks([task, ...tasks]);
     setNewTaskTitle("");
     setNewTaskDesc("");
     notify("Tarea agregada al relevo.", "success");
+    addLog?.("TAREA", `Nueva tarea creada: ${task.title}`);
   };
 
   const completeTask = (id) => {
+    const taskToComplete = tasks.find((t) => t.id === id);
+
     const updated = tasks.map((t) =>
       t.id === id ? { ...t, status: "completed" } : t
     );
     setTasks(updated);
-    // Actualizar mock DB para que persista
-    TASKS_DB = TASKS_DB.map((t) =>
-      t.id === id ? { ...t, status: "completed" } : t
+
+    // Persistir en mock DB sin reasignar
+    TASKS_DB.splice(
+      0,
+      TASKS_DB.length,
+      ...TASKS_DB.map((t) => (t.id === id ? { ...t, status: "completed" } : t))
     );
+
     notify("Tarea marcada como realizada.", "success");
+
+    // ✅ log correcto (con fallback)
+    const title = taskToComplete?.title ?? taskToComplete?.name ?? "Sin título";
+    addLog?.("TAREA", `Tarea completada: ${title}`);
   };
 
   return (
@@ -2565,7 +2587,12 @@ const GuardLprPopup = ({ data, onClose, notify, addGlobalNotification }) => {
   );
 };
 
-const GuardLprScreen = ({ setScreen, triggerLprSimulation, addLog, notify }) => {
+const GuardLprScreen = ({
+  setScreen,
+  triggerLprSimulation,
+  addLog,
+  notify,
+}) => {
   const [events, setEvents] = useState([]);
   const [isLive, setIsLive] = useState(true);
 
@@ -2577,7 +2604,10 @@ const GuardLprScreen = ({ setScreen, triggerLprSimulation, addLog, notify }) => 
 
     const e = {
       id: Date.now(),
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      time: new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
       plate: plates[Math.floor(Math.random() * plates.length)],
       type: types[Math.floor(Math.random() * types.length)],
       confidence,
@@ -2600,10 +2630,16 @@ const GuardLprScreen = ({ setScreen, triggerLprSimulation, addLog, notify }) => 
   return (
     <div className="flex flex-col h-full bg-slate-50 text-slate-800 animate-fade-in-up">
       <div className="p-4 border-b border-slate-200 bg-white flex items-center gap-4 shadow-sm">
-        <Button variant="secondary" size="sm" onClick={() => setScreen("dashboard")}>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => setScreen("dashboard")}
+        >
           <ArrowLeft className="w-4 h-4" /> VOLVER
         </Button>
-        <h2 className="font-black text-xl text-slate-800">MONITOR CÁMARAS LPR</h2>
+        <h2 className="font-black text-xl text-slate-800">
+          MONITOR CÁMARAS LPR
+        </h2>
         <div className="ml-auto flex gap-2">
           <Button
             variant={isLive ? "secondary" : "primary"}
@@ -2626,7 +2662,11 @@ const GuardLprScreen = ({ setScreen, triggerLprSimulation, addLog, notify }) => 
               Cámara Principal • {isLive ? "EN VIVO" : "PAUSADO"}
             </span>
             <span className="text-[10px] font-mono text-emerald-400">
-              REC: {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              REC:{" "}
+              {new Date().toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
             </span>
           </div>
           <div className="aspect-video flex items-center justify-center text-slate-400 text-sm">
@@ -2637,8 +2677,12 @@ const GuardLprScreen = ({ setScreen, triggerLprSimulation, addLog, notify }) => 
         {/* Detecciones */}
         <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
           <div className="p-4 border-b border-slate-200 flex items-center justify-between">
-            <h3 className="font-black text-sm uppercase tracking-wider">Detecciones Recientes</h3>
-            <span className="text-xs text-slate-400 font-medium">{events.length} eventos</span>
+            <h3 className="font-black text-sm uppercase tracking-wider">
+              Detecciones Recientes
+            </h3>
+            <span className="text-xs text-slate-400 font-medium">
+              {events.length} eventos
+            </span>
           </div>
 
           <div className="p-4 space-y-3">
@@ -2656,7 +2700,9 @@ const GuardLprScreen = ({ setScreen, triggerLprSimulation, addLog, notify }) => 
                       {e.type} • Conf: {e.confidence}
                     </div>
                   </div>
-                  <div className="text-xs font-mono text-slate-500">{e.time}</div>
+                  <div className="text-xs font-mono text-slate-500">
+                    {e.time}
+                  </div>
                 </div>
               ))
             )}
@@ -2666,7 +2712,6 @@ const GuardLprScreen = ({ setScreen, triggerLprSimulation, addLog, notify }) => 
     </div>
   );
 };
-
 
 const GuardDashboard = ({
   currentUser,
@@ -2844,7 +2889,9 @@ const GuardView = ({
   addGlobalNotification,
   notifications,
   markAsRead,
-    addLog,
+  guardTasks,
+  setGuardTasks,
+  addLog,
   openShiftReport, // <-- NUEVO
 }) => {
   const [screen, setScreen] = useState("dashboard");
@@ -2885,6 +2932,14 @@ const GuardView = ({
           addGlobalNotification={addGlobalNotification}
         />
       )}
+      {screen === "tasks" && (
+        <GuardTasksScreen
+          setScreen={setScreen}
+          notify={notify}
+          addLog={addLog}
+        />
+      )}
+
       {screen === "package" && (
         <GuardPackageScreen
           setScreen={setScreen}
@@ -4852,6 +4907,7 @@ const AdminView = ({ onBack, notify, notifications, markAsRead }) => {
 export default function App() {
   const [currentRole, setCurrentRole] = useState(null);
   const [currentUser, setCurrentUser] = useState("");
+  const [guardTasks, setGuardTasks] = useState(() => TASKS_DB); // inicial
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [notification, setNotification] = useState(null);
   const [globalNotifications, setGlobalNotifications] = useState(
@@ -4915,6 +4971,8 @@ export default function App() {
               notifications={globalNotifications}
               markAsRead={markAsRead}
               addLog={addLog}
+              guardTasks={guardTasks}
+              setGuardTasks={setGuardTasks}
               shiftLogs={shiftLogs}
               openShiftReport={() => setShowShiftReport(true)}
             />
