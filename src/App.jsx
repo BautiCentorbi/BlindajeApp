@@ -1184,18 +1184,24 @@ const ShiftReportModal = ({
   logs = [],
   tasks = [],
 }) => {
-  const pending = (tasks ?? []).filter(
-    (t) => (t.status ?? "pending") === "pending"
-  );
+  const isPending = (s) => {
+    const v = String(s ?? "pending").toLowerCase();
+    return v === "pending" || v === "pendiente" || v === "open" || v === "todo";
+  };
+
+  const pending = (tasks ?? []).filter((t) => isPending(t.status));
+
+  const isHigh = (p) => String(p ?? "").toLowerCase() === "high";
 
   const summary = {
     total: tasks?.length ?? 0,
     pendingCount: pending.length,
-    pendingHigh: pending.filter((t) => t.priority === "high").length,
+    pendingHigh: pending.filter((t) => isHigh(t.priority)).length,
     pendingTitles: pending
       .slice(0, 5)
       .map((t) => t.title ?? t.name ?? "Sin título"),
   };
+
   const handleConfirm = () => {
     const withSummaryLogs =
       summary.pendingCount === 0
@@ -1245,8 +1251,39 @@ const ShiftReportModal = ({
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
+          {/* ✅ 1) Resumen SIEMPRE visible */}
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-4">
+            <h3 className="text-xs font-black text-slate-500 uppercase mb-2">
+              Resumen de Pendientes (al cierre)
+            </h3>
+
+            {pending.length === 0 ? (
+              <p className="text-sm text-emerald-700 font-bold">
+                Sin pendientes. Turno al día.
+              </p>
+            ) : (
+              <div className="text-sm text-slate-700 space-y-2">
+                <p>
+                  Quedan <b>{pending.length}</b> tareas pendientes (Alta:{" "}
+                  <b>{summary.pendingHigh}</b>).
+                </p>
+                <ul className="list-disc pl-5 text-slate-600">
+                  {summary.pendingTitles.map((t, i) => (
+                    <li key={i}>{t}</li>
+                  ))}
+                  {pending.length > summary.pendingTitles.length && (
+                    <li className="text-slate-400">
+                      +{pending.length - summary.pendingTitles.length} más…
+                    </li>
+                  )}
+                </ul>
+              </div>
+            )}
+          </div>
+
+          {/* ✅ 2) Cronología CONDICIONAL */}
           {logs.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-slate-400 space-y-4">
+            <div className="flex flex-col items-center justify-center h-48 text-slate-400 space-y-4">
               <ClipboardList size={64} className="opacity-20" />
               <p className="font-bold">
                 Sin actividad registrada en este turno.
@@ -1254,38 +1291,10 @@ const ShiftReportModal = ({
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-4">
-                <h3 className="text-xs font-black text-slate-500 uppercase mb-2">
-                  Resumen de Pendientes (al cierre)
-                </h3>
-
-                {pending.length === 0 ? (
-                  <p className="text-sm text-emerald-700 font-bold">
-                    Sin pendientes. Turno al día.
-                  </p>
-                ) : (
-                  <div className="text-sm text-slate-700 space-y-2">
-                    <p>
-                      Quedan <b>{pending.length}</b> tareas pendientes (Alta:{" "}
-                      <b>{summary.pendingHigh}</b>).
-                    </p>
-                    <ul className="list-disc pl-5 text-slate-600">
-                      {summary.pendingTitles.map((t, i) => (
-                        <li key={i}>{t}</li>
-                      ))}
-                      {pending.length > summary.pendingTitles.length && (
-                        <li className="text-slate-400">
-                          +{pending.length - summary.pendingTitles.length} más…
-                        </li>
-                      )}
-                    </ul>
-                  </div>
-                )}
-              </div>
-
               <h3 className="text-xs font-black text-slate-500 uppercase mb-4">
                 Cronología de Eventos
               </h3>
+
               {logs.map((log, idx) => (
                 <div
                   key={idx}
@@ -1309,6 +1318,7 @@ const ShiftReportModal = ({
             </div>
           )}
         </div>
+
         <div className="p-6 border-t border-slate-200 bg-white flex justify-end gap-4">
           <Button variant="ghost" onClick={onClose}>
             CANCELAR
@@ -5203,13 +5213,25 @@ export default function App() {
         <ShiftReportModal
           onClose={() => setShowShiftReport(false)}
           onConfirm={(report) => {
-            // ejemplo: guardar reporte en estado (o mandar a backend)
+            // 1) Guardar reporte (mock / futuro backend)
             setShiftLogs((prev) => [...prev, report]);
+
+            // 2) Cerrar modal
             setShowShiftReport(false);
+
+            // 3) Feedback
             showNotification("Cierre de turno registrado", "success");
+
+            // 4) Limpieza de estado de turno
+            setShiftLogs([]);
+            setGuardTasks(TASKS_DB); // o [] si querés resetear todo
+
+            // 5) 🔴 CIERRE DE SESIÓN
+            resetAuth();
           }}
           guardName={currentUser}
           logs={shiftLogs}
+          tasks={guardTasks}
         />
       )}
     </div>
