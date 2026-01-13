@@ -5276,7 +5276,7 @@ const LocalAdminView = ({
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {AMENITIES_SLOTS.map((slot, index) => (
+                {AMENITIES_BASE_SLOTS.map((slot, index) => (
                   <div
                     key={index}
                     className={`p-4 rounded-lg border-2 flex justify-between items-center ${
