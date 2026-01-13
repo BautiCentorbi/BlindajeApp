@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import {
   Shield,
   LocateFixed,
+  ChevronUp,
   FileCheck,
   User,
   BarChart3,
@@ -1974,14 +1975,33 @@ const GuardSupplierWizard = ({ setScreen, notify }) => {
 };
 
 // 2. MÓDULO DE PAQUETERÍA: Versión Data Entry
-const GuardPackageScreen = ({ setScreen, notify }) => {
-  const [showForm, setShowForm] = useState(false);
+const SENDERS = [
+  "Mercado Libre",
+  "Correo Argentino",
+  "OCA",
+  "Andreani",
+  "Amazon",
+  "Shein",
+  "Otro",
+];
+
+const GuardPackageScreen = ({
+  setScreen,
+  notify,
+  addLog,
+  addGlobalNotification,
+  currentUser,
+}) => {
+  const [mode, setMode] = useState("list"); // "list" | "create"
+  const [photoTaken, setPhotoTaken] = useState(false);
+
   const [newPackage, setNewPackage] = useState({
     unit: "",
     company: "",
     type: "Paquete",
-    receiver: "",
+    receiver: currentUser || "Guardia Turno Actual",
   });
+
   const [packages, setPackages] = useState([
     {
       id: 1,
@@ -1989,7 +2009,7 @@ const GuardPackageScreen = ({ setScreen, notify }) => {
       company: "Mercado Libre",
       type: "Paquete",
       status: "pending",
-      date: "10:30 AM",
+      date: "10:30",
     },
     {
       id: 2,
@@ -1997,13 +2017,53 @@ const GuardPackageScreen = ({ setScreen, notify }) => {
       company: "Amazon",
       type: "Sobre",
       status: "pending",
-      date: "11:15 AM",
+      date: "11:15",
     },
   ]);
+
+  const resetForm = () => {
+    setNewPackage({
+      unit: "",
+      company: "",
+      type: "Paquete",
+      receiver: currentUser || "Guardia Turno Actual",
+    });
+
+    setPhotoTaken(false);
+  };
+
+  const isFormValid =
+    newPackage.unit.trim() &&
+    newPackage.company.trim() &&
+    newPackage.type &&
+    photoTaken;
+
+  const handleNotifyUnit = (pkg) => {
+    notify(`Recordatorio enviado a ${pkg.unit}`, "success");
+
+    // status interno
+    setPackages((prev) =>
+      prev.map((p) => (p.id === pkg.id ? { ...p, status: "notified" } : p))
+    );
+
+    addLog?.(
+      "PAQUETERÍA",
+      `Notificación enviada a ${pkg.unit} (${pkg.type} • ${pkg.company})`
+    );
+
+    addGlobalNotification?.({
+      title: "Notificación enviada",
+      message: `Se notificó a ${pkg.unit} por ${pkg.type} • ${pkg.company}`,
+      type: "alert",
+      priority: "normal",
+    });
+  };
 
   const handleSave = () => {
     if (!newPackage.unit || !newPackage.company)
       return notify("Complete los datos", "error");
+    if (!photoTaken) return notify("Falta la evidencia fotográfica", "error");
+
     const pkg = {
       id: Date.now(),
       ...newPackage,
@@ -2013,146 +2073,238 @@ const GuardPackageScreen = ({ setScreen, notify }) => {
         minute: "2-digit",
       }),
     };
-    setPackages([pkg, ...packages]);
-    setShowForm(false);
-    setNewPackage({ unit: "", company: "", type: "Paquete", receiver: "" });
+
+    setPackages((prev) => [pkg, ...prev]);
+
     notify(`Paquete registrado para ${pkg.unit}`, "success");
+
+    addLog?.(
+      "PAQUETERÍA",
+      `Ingreso: ${pkg.type} para ${pkg.unit} (${pkg.company})`
+    );
+
+    addGlobalNotification?.({
+      title: "Nuevo ingreso de paquetería",
+      message: `${pkg.type} para ${pkg.unit} • ${pkg.company}`,
+      type: "alert",
+      priority: "normal",
+    });
+
+    setMode("list");
+    resetForm();
   };
 
   return (
     <div className="flex flex-col h-full bg-slate-50 text-slate-800 animate-fade-in-up">
+      {/* Header */}
       <div className="p-4 border-b border-slate-200 bg-white flex items-center justify-between gap-4 shadow-sm">
         <div className="flex items-center gap-4">
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => setScreen("dashboard")}
+            onClick={() =>
+              mode === "create" ? setMode("list") : setScreen("dashboard")
+            }
           >
-            <ArrowLeft className="w-4 h-4" /> VOLVER
+            <ArrowLeft className="w-4 h-4" />{" "}
+            {mode === "create" ? "CANCELAR" : "VOLVER"}
           </Button>
-          <h2 className="font-black text-xl text-slate-800">PAQUETERÍA</h2>
+          <div>
+            <h2 className="font-black text-xl text-slate-800 tracking-tight">
+              {mode === "create" ? "RECEPCIÓN DE PAQUETERÍA" : "PAQUETERÍA"}
+            </h2>
+            {mode === "create" && (
+              <p className="text-xs text-slate-500 font-bold uppercase">
+                Oficial Responsable:{" "}
+                {newPackage.receiver || "Guardia Turno Actual"}
+              </p>
+            )}
+          </div>
         </div>
-        <Button size="sm" onClick={() => setShowForm(true)} disabled={showForm}>
-          + RECIBIR
-        </Button>
+
+        {mode === "list" && (
+          <Button size="sm" onClick={() => setMode("create")}>
+            + RECIBIR
+          </Button>
+        )}
       </div>
 
-      <div className="p-6 flex-1 overflow-y-auto flex gap-6">
-        {/* LISTADO */}
-        <div
-          className={`flex-1 space-y-4 ${showForm ? "hidden md:block" : ""}`}
-        >
-          <h3 className="font-bold text-slate-500 uppercase text-xs mb-2">
-            En Guardia ({packages.length})
-          </h3>
-          {packages.length === 0 ? (
-            <div className="text-center text-slate-400 py-10 border-2 border-dashed rounded-xl">
-              No hay paquetes pendientes.
-            </div>
-          ) : (
-            packages.map((p) => (
-              <div
-                key={p.id}
-                className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="bg-blue-100 p-3 rounded-lg text-blue-600">
-                    <Box size={24} />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-black text-slate-800 text-lg">
-                        {p.unit}
-                      </span>
-                      <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded uppercase font-bold">
-                        {p.type}
-                      </span>
-                    </div>
-                    <p className="text-sm text-slate-600">{p.company}</p>
-                    <p className="text-xs text-slate-400 font-mono mt-1">
-                      {p.date}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  className="bg-orange-50 text-orange-600 px-4 py-2 rounded-lg font-bold text-xs hover:bg-orange-100 uppercase"
-                  onClick={() => notify(`Recordatorio enviado a ${p.unit}`)}
-                >
-                  Notificar
-                </button>
-              </div>
-            ))
-          )}
-        </div>
+      {/* Body */}
+      <div className="flex-1 p-6 overflow-y-auto">
+        {mode === "list" ? (
+          // LISTA (igual que la tuya, levemente ordenada)
+          <div className="max-w-4xl mx-auto space-y-4">
+            <h3 className="font-bold text-slate-500 uppercase text-xs">
+              En Guardia ({packages.length})
+            </h3>
 
-        {/* FORMULARIO DE INGRESO */}
-        {showForm && (
-          <div className="w-full md:w-1/3 bg-white p-6 rounded-xl shadow-xl border border-slate-200 h-fit animate-fade-in-up">
-            <div className="flex justify-between items-center mb-4 border-b pb-2">
-              <h3 className="font-black text-lg text-slate-800">
-                Nuevo Ingreso
-              </h3>
-              <button
-                onClick={() => setShowForm(false)}
-                className="text-slate-400 hover:text-red-500"
-              >
-                <XCircle size={20} />
-              </button>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="text-xs font-bold uppercase text-slate-500">
-                  Unidad Destino
+            {packages.length === 0 ? (
+              <div className="text-center text-slate-400 py-10 border-2 border-dashed rounded-xl">
+                No hay paquetes pendientes.
+              </div>
+            ) : (
+              packages.map((p) => (
+                <div
+                  key={p.id}
+                  className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="bg-blue-100 p-3 rounded-lg text-blue-600">
+                      <Box size={24} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-black text-slate-800 text-lg">
+                          {p.unit}
+                        </span>
+                        <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded uppercase font-bold">
+                          {p.type}
+                        </span>
+                      </div>
+                      <p className="text-sm text-slate-600">{p.company}</p>
+                      <p className="text-xs text-slate-400 font-mono mt-1">
+                        {p.date}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    className="bg-orange-50 text-orange-600 px-4 py-2 rounded-lg font-bold text-xs hover:bg-orange-100 uppercase"
+                    onClick={() => handleNotifyUnit(p)}
+                  >
+                    Notificar
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        ) : (
+          // CREATE (layout tipo 2 columnas)
+          <div className="max-w-4xl mx-auto bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row">
+            {/* Left column */}
+            <div className="flex-1 p-8 space-y-6 border-r border-slate-100">
+              {/* 1. Unidad */}
+              <div className="space-y-2">
+                <label className="text-xs font-black uppercase tracking-wider text-slate-600">
+                  1. Unidad destino
                 </label>
                 <input
-                  className="w-full p-3 border-2 border-slate-100 rounded-lg focus:border-blue-500 outline-none font-bold"
+                  className="w-full pl-4 pr-4 py-3 rounded-lg border-2 border-slate-200 bg-slate-50 text-slate-900 focus:border-orange-500 outline-none font-bold"
                   placeholder="Ej: UF 402"
                   value={newPackage.unit}
                   onChange={(e) =>
-                    setNewPackage({ ...newPackage, unit: e.target.value })
+                    setNewPackage((p) => ({ ...p, unit: e.target.value }))
                   }
                   autoFocus
                 />
               </div>
-              <div>
-                <label className="text-xs font-bold uppercase text-slate-500">
-                  Empresa / Courier
-                </label>
-                <input
-                  className="w-full p-3 border-2 border-slate-100 rounded-lg focus:border-blue-500 outline-none"
-                  placeholder="Ej: Mercado Libre"
-                  value={newPackage.company}
-                  onChange={(e) =>
-                    setNewPackage({ ...newPackage, company: e.target.value })
-                  }
-                />
-              </div>
-              <div>
-                <label className="text-xs font-bold uppercase text-slate-500">
-                  Tipo
-                </label>
-                <div className="flex gap-2 mt-1">
-                  {["Paquete", "Sobre", "Comida"].map((type) => (
-                    <button
-                      key={type}
-                      onClick={() => setNewPackage({ ...newPackage, type })}
-                      className={`flex-1 py-2 text-xs font-bold rounded border ${
-                        newPackage.type === type
-                          ? "bg-blue-600 text-white border-blue-600"
-                          : "bg-white text-slate-500 border-slate-200"
-                      }`}
+
+              {/* 2-3 grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* 2. Tipo */}
+                <div className="space-y-2">
+                  <label className="text-xs font-black uppercase tracking-wider text-slate-600">
+                    2. Tipo de correspondencia
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={newPackage.type}
+                      onChange={(e) =>
+                        setNewPackage((p) => ({ ...p, type: e.target.value }))
+                      }
+                      className="w-full pl-4 pr-10 py-3 rounded-lg border-2 border-slate-200 bg-slate-50 text-slate-900 focus:border-orange-500 outline-none appearance-none font-medium cursor-pointer hover:bg-white"
                     >
-                      {type}
-                    </button>
-                  ))}
+                      {PACKAGE_TYPES.map((t) => (
+                        <option key={t} value={t}>
+                          {t}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-3 top-3.5 w-5 h-5 text-slate-400 pointer-events-none" />
+                  </div>
+                </div>
+
+                {/* 3. Remitente */}
+                <div className="space-y-2">
+                  <label className="text-xs font-black uppercase tracking-wider text-slate-600">
+                    3. Remitente / Empresa
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={newPackage.company}
+                      onChange={(e) =>
+                        setNewPackage((p) => ({
+                          ...p,
+                          company: e.target.value,
+                        }))
+                      }
+                      className="w-full pl-4 pr-10 py-3 rounded-lg border-2 border-slate-200 bg-slate-50 text-slate-900 focus:border-orange-500 outline-none appearance-none font-medium cursor-pointer hover:bg-white"
+                    >
+                      <option value="">Seleccionar…</option>
+                      {SENDERS.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-3 top-3.5 w-5 h-5 text-slate-400 pointer-events-none" />
+                  </div>
                 </div>
               </div>
-              <div className="pt-2">
-                <button className="w-full py-3 border-2 border-dashed border-slate-300 rounded-lg text-slate-400 font-bold text-xs flex items-center justify-center gap-2 hover:bg-slate-50 mb-4">
-                  <Camera size={16} /> TOMAR FOTO ETIQUETA
-                </button>
-                <Button className="w-full" onClick={handleSave}>
-                  <Save size={16} /> REGISTRAR
+
+              {/* 4. Recibido por */}
+              <div className="space-y-2">
+                <label className="text-xs font-black uppercase tracking-wider text-slate-600">
+                  4. Recibido por
+                </label>
+                <div className="w-full px-4 py-3 rounded-lg border border-slate-200 bg-slate-100 text-slate-500 font-bold flex items-center gap-2 cursor-not-allowed">
+                  <Shield className="w-4 h-4" />
+                  Guardia Turno Actual (Verificado)
+                </div>
+              </div>
+            </div>
+
+            {/* Right column - photo + CTA */}
+            <div className="w-full md:w-1/3 bg-slate-50 p-8 flex flex-col justify-between border-l border-slate-200">
+              <div className="space-y-4">
+                <label className="text-xs font-black uppercase tracking-wider text-slate-600 text-center block">
+                  5. Evidencia fotográfica
+                </label>
+
+                <div
+                  onClick={() => setPhotoTaken((v) => !v)}
+                  className={`w-full aspect-square rounded-2xl border-4 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all group relative overflow-hidden ${
+                    photoTaken
+                      ? "border-emerald-500 bg-emerald-50"
+                      : "border-slate-300 hover:border-orange-500 hover:bg-orange-50"
+                  }`}
+                >
+                  {photoTaken ? (
+                    <div className="relative z-10 flex flex-col items-center text-emerald-700">
+                      <CheckCircle className="w-12 h-12 mb-2 drop-shadow-md" />
+                      <span className="font-black">FOTO OK</span>
+                    </div>
+                  ) : (
+                    <div className="text-slate-400 group-hover:text-orange-500 flex flex-col items-center">
+                      <Camera className="w-12 h-12 mb-2" />
+                      <span className="font-bold text-sm">TOMAR FOTO</span>
+                    </div>
+                  )}
+                </div>
+
+                <p className="text-xs text-center text-slate-400">
+                  Toque el recuadro para simular la captura.
+                </p>
+              </div>
+
+              <div className="mt-8">
+                <Button
+                  onClick={handleSave}
+                  disabled={!isFormValid}
+                  className="w-full py-4 text-base shadow-xl bg-orange-600 hover:bg-orange-700 font-bold"
+                >
+                  <Send className="w-5 h-5 mr-2" />
+                  REGISTRAR Y NOTIFICAR
                 </Button>
               </div>
             </div>
@@ -2929,24 +3081,6 @@ const GuardDashboard = ({
           </span>
         </button>
       </div>
-      <div className="h-1/3 bg-white border-t-2 border-orange-500 flex flex-col shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
-        <div className="px-6 py-3 bg-orange-50 border-b border-orange-100 flex justify-between items-center">
-          <h3 className="text-xs font-black text-orange-600 uppercase tracking-widest flex items-center gap-2">
-            <Activity size={16} /> Registro de Eventos en Vivo
-          </h3>
-          <span className="text-[10px] text-emerald-600 font-bold bg-emerald-100 px-2 py-1 rounded-full animate-pulse">
-            ● ONLINE
-          </span>
-        </div>
-        <div className="flex-1 overflow-y-auto p-4 space-y-3 font-mono text-sm">
-          <div className="flex gap-4 p-2 rounded hover:bg-slate-50 border-l-4 border-emerald-500">
-            <span className="text-slate-400 font-bold">[14:45:12]</span>
-            <span className="text-slate-700">
-              Acceso Autorizado » Lote 42 » Toyota Corolla AA123CD
-            </span>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
@@ -3014,11 +3148,13 @@ const GuardView = ({
       {screen === "package" && (
         <GuardPackageScreen
           setScreen={setScreen}
-          currentUser={currentUser}
           notify={notify}
+          addLog={addLog}
           addGlobalNotification={addGlobalNotification}
+          currentUser={currentUser}
         />
       )}
+
       {screen === "visits" && (
         <GuardVisitsScreen
           setScreen={setScreen}
@@ -5040,6 +5176,113 @@ export default function App() {
     );
   };
 
+  const LiveActivityDrawer = ({
+    logs = [],
+    onClear,
+    title = "REGISTRO DE ACTIVIDAD EN VIVO",
+  }) => {
+    const [open, setOpen] = useState(false);
+
+    // Solo los últimos N para no hacer infinito el DOM
+    const visible = logs.slice(0, 40);
+
+    return (
+      <div className="fixed bottom-0 left-0 right-0 z-[150] pointer-events-none">
+        <div className="max-w-6xl mx-auto px-4 pb-4 pointer-events-auto">
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden">
+            {/* Header (siempre visible) */}
+            <button
+              onClick={() => setOpen((v) => !v)}
+              className="w-full px-4 py-3 bg-orange-50 border-b border-orange-100 flex items-center justify-between"
+            >
+              <div className="flex items-center gap-2">
+                <Activity size={16} className="text-orange-600" />
+                <span className="text-xs font-black text-orange-600 uppercase tracking-widest">
+                  {title}
+                </span>
+                <span className="text-[10px] text-emerald-700 font-bold bg-emerald-100 px-2 py-1 rounded-full">
+                  ● ONLINE
+                </span>
+                <span className="text-[10px] text-slate-400 font-mono">
+                  ({logs.length})
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {typeof onClear === "function" && (
+                  <span
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onClear();
+                    }}
+                    className="inline-flex items-center gap-1 text-[10px] font-black uppercase px-2 py-1 rounded bg-white border border-slate-200 text-slate-500 hover:text-red-600 hover:border-red-200"
+                    role="button"
+                  >
+                    <Trash2 size={14} /> Limpiar
+                  </span>
+                )}
+
+                {open ? (
+                  <ChevronDown className="w-5 h-5 text-slate-500" />
+                ) : (
+                  <ChevronUp className="w-5 h-5 text-slate-500" />
+                )}
+              </div>
+            </button>
+
+            {/* Body (colapsable) */}
+            <div
+              className={`transition-all duration-300 ease-out ${
+                open ? "max-h-[45vh]" : "max-h-0"
+              } overflow-hidden`}
+            >
+              <div className="p-4 bg-white">
+                {visible.length === 0 ? (
+                  <div className="text-slate-400 text-sm font-bold text-center py-6">
+                    Sin eventos aún.
+                  </div>
+                ) : (
+                  <div className="space-y-2 font-mono text-xs">
+                    {visible.map((log, idx) => (
+                      <div
+                        key={idx}
+                        className="flex gap-3 p-2 rounded hover:bg-slate-50 border-l-4"
+                        style={{
+                          borderLeftColor:
+                            log.type === "ALERTA"
+                              ? "rgb(220 38 38)"
+                              : log.type === "LPR"
+                              ? "rgb(37 99 235)"
+                              : log.type === "PAQUETERÍA"
+                              ? "rgb(249 115 22)"
+                              : "rgb(16 185 129)",
+                        }}
+                      >
+                        <span className="text-slate-400 font-bold min-w-[54px]">
+                          [{log.time ?? "--:--"}]
+                        </span>
+                        <span className="text-[10px] font-black uppercase text-slate-500 min-w-[90px]">
+                          {log.type ?? "EVENTO"}
+                        </span>
+                        <span className="text-slate-700 flex-1">
+                          {log.detail ?? ""}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="pt-3 text-[10px] text-slate-400 font-mono">
+                  Mostrando últimos {visible.length} eventos.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderContent = () => {
     if (currentRole && !isAuthenticated)
       return (
@@ -5233,6 +5476,9 @@ export default function App() {
           logs={shiftLogs}
           tasks={guardTasks}
         />
+      )}
+      {isAuthenticated && currentRole === "guard" && (
+        <LiveActivityDrawer logs={shiftLogs} onClear={() => setShiftLogs([])} />
       )}
     </div>
   );
