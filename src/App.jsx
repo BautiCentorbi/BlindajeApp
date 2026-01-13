@@ -1182,15 +1182,42 @@ const ShiftReportModal = ({
   onConfirm,
   guardName,
   logs = [],
-  setLogs,
+  tasks = [],
 }) => {
+  const pending = (tasks ?? []).filter(
+    (t) => (t.status ?? "pending") === "pending"
+  );
+
+  const summary = {
+    total: tasks?.length ?? 0,
+    pendingCount: pending.length,
+    pendingHigh: pending.filter((t) => t.priority === "high").length,
+    pendingTitles: pending
+      .slice(0, 5)
+      .map((t) => t.title ?? t.name ?? "Sin título"),
+  };
   const handleConfirm = () => {
+    const withSummaryLogs =
+      summary.pendingCount === 0
+        ? logs
+        : [
+            {
+              time: new Date().toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+              type: "RESUMEN",
+              detail: `Pendientes al cierre: ${summary.pendingCount} (Alta: ${summary.pendingHigh})`,
+            },
+            ...logs,
+          ];
+
     const report = {
       id: Date.now(),
       guardName,
       createdAt: new Date().toISOString(),
-      logs,
-      // plus: texto de observaciones, firma, etc.
+      logs: withSummaryLogs, // <-- usar logs con resumen
+      tasksSummary: summary,
     };
 
     if (typeof onConfirm === "function") onConfirm(report);
@@ -1227,6 +1254,35 @@ const ShiftReportModal = ({
             </div>
           ) : (
             <div className="space-y-4">
+              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-4">
+                <h3 className="text-xs font-black text-slate-500 uppercase mb-2">
+                  Resumen de Pendientes (al cierre)
+                </h3>
+
+                {pending.length === 0 ? (
+                  <p className="text-sm text-emerald-700 font-bold">
+                    Sin pendientes. Turno al día.
+                  </p>
+                ) : (
+                  <div className="text-sm text-slate-700 space-y-2">
+                    <p>
+                      Quedan <b>{pending.length}</b> tareas pendientes (Alta:{" "}
+                      <b>{summary.pendingHigh}</b>).
+                    </p>
+                    <ul className="list-disc pl-5 text-slate-600">
+                      {summary.pendingTitles.map((t, i) => (
+                        <li key={i}>{t}</li>
+                      ))}
+                      {pending.length > summary.pendingTitles.length && (
+                        <li className="text-slate-400">
+                          +{pending.length - summary.pendingTitles.length} más…
+                        </li>
+                      )}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
               <h3 className="text-xs font-black text-slate-500 uppercase mb-4">
                 Cronología de Eventos
               </h3>
@@ -1270,7 +1326,7 @@ const ShiftReportModal = ({
 };
 
 // 4. MÓDULO DE TAREAS PENDIENTES / RELEVOS
-const GuardTasksScreen = ({ setScreen, notify, addLog }) => {
+const GuardTasksScreen = ({ setScreen, notify, addLog, tasks, setTasks }) => {
   const normalizeTask = (t) => ({
     id: t.id ?? Date.now(),
     title: t.title ?? t.name ?? "Sin título",
@@ -1281,14 +1337,13 @@ const GuardTasksScreen = ({ setScreen, notify, addLog }) => {
     date: t.date ?? "—",
   });
 
-  const [tasks, setTasks] = useState(() => TASKS_DB.map(normalizeTask));
-
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskDesc, setNewTaskDesc] = useState("");
   const [newTaskPriority, setNewTaskPriority] = useState("normal");
 
   const handleAddTask = () => {
     if (!newTaskTitle) return;
+
     const task = normalizeTask({
       id: Date.now(),
       title: newTaskTitle,
@@ -1298,13 +1353,17 @@ const GuardTasksScreen = ({ setScreen, notify, addLog }) => {
       author: "Guardia Turno Actual",
       date: "Ahora",
     });
-    TASKS_DB.unshift(task); // Persistir en mock DB
-    setTasks([task, ...tasks]);
+
+    TASKS_DB.unshift(task); // opcional mock persist
+    setTasks((prev) => [task, ...prev]);
+
     setNewTaskTitle("");
     setNewTaskDesc("");
     notify("Tarea agregada al relevo.", "success");
     addLog?.("TAREA", `Nueva tarea creada: ${task.title}`);
   };
+
+  // completeTask queda igual...
 
   const completeTask = (id) => {
     const taskToComplete = tasks.find((t) => t.id === id);
@@ -2937,6 +2996,8 @@ const GuardView = ({
           setScreen={setScreen}
           notify={notify}
           addLog={addLog}
+          tasks={guardTasks}
+          setTasks={setGuardTasks}
         />
       )}
 
@@ -4907,13 +4968,35 @@ const AdminView = ({ onBack, notify, notifications, markAsRead }) => {
 export default function App() {
   const [currentRole, setCurrentRole] = useState(null);
   const [currentUser, setCurrentUser] = useState("");
-  const [guardTasks, setGuardTasks] = useState(() => TASKS_DB); // inicial
+  const normalizeTask = (t) => ({
+    id: t.id ?? Date.now(),
+    title: t.title ?? t.name ?? "Sin título",
+    description: t.description ?? t.desc ?? "",
+    priority: t.priority ?? t.level ?? "normal",
+    status: t.status ?? "pending",
+    author: t.author ?? "Sistema",
+    date: t.date ?? "—",
+  });
+
+  const [guardTasks, setGuardTasks] = useState(() =>
+    TASKS_DB.map(normalizeTask)
+  );
+
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [notification, setNotification] = useState(null);
   const [globalNotifications, setGlobalNotifications] = useState(
     INITIAL_NOTIFICATIONS
   );
   const [showShiftReport, setShowShiftReport] = useState(false);
+  const [shiftLogs, setShiftLogs] = useState([]);
+
+  const addLog = (type, detail) => {
+    const time = new Date().toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    setShiftLogs((prev) => [{ time, type, detail }, ...prev]);
+  };
 
   const showNotification = (message, type = "success") => {
     setNotification({ message, type });
@@ -5102,15 +5185,6 @@ export default function App() {
         </div>
       </div>
     );
-  };
-  const [shiftLogs, setShiftLogs] = useState([]);
-
-  const addLog = (type, detail) => {
-    const time = new Date().toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-    setShiftLogs((prev) => [{ time, type, detail }, ...prev]);
   };
 
   return (
