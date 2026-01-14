@@ -539,6 +539,109 @@ const getIcon = (name, size, className) => {
 
 // --- UI COMPONENTS ---
 
+const ScanSimModal = ({
+  open,
+  onClose,
+  title = "Escaneo",
+  subtitle = "Cámara simulada",
+  actionLabel = "CAPTURAR",
+  simulate, // función que devuelve datos mock
+  onResult, // callback que recibe resultado
+  notify,
+  durationMs = 1400, // tiempo de "escaneando"
+}) => {
+  const [phase, setPhase] = useState("idle"); // idle | scanning | success
+
+  useEffect(() => {
+    if (!open) setPhase("idle");
+  }, [open]);
+
+  const runScan = async () => {
+    if (phase !== "idle") return;
+
+    setPhase("scanning");
+    notify?.("Escaneando…", "info");
+
+    // delay para simular OCR/LPR/QR
+    await new Promise((r) => setTimeout(r, durationMs));
+
+    const result = typeof simulate === "function" ? simulate() : null;
+
+    setPhase("success");
+    notify?.("Validado.", "success");
+
+    // breve delay para mostrar “Validado”
+    await new Promise((r) => setTimeout(r, 650));
+
+    onResult?.(result);
+    onClose?.();
+  };
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
+      <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
+        <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
+          <div>
+            <div className="font-black uppercase text-sm">{title}</div>
+            <div className="text-xs text-white/70 font-medium">{subtitle}</div>
+          </div>
+          <button onClick={onClose} className="text-white/70 hover:text-white">
+            <XCircle size={22} />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4">
+          <div className="aspect-video bg-slate-100 border-2 border-dashed border-slate-300 rounded-xl flex items-center justify-center relative overflow-hidden">
+            {phase === "idle" && (
+              <div className="text-slate-400 font-bold flex items-center gap-2">
+                <Camera size={18} /> Vista Cámara (simulada)
+              </div>
+            )}
+
+            {phase === "scanning" && (
+              <div className="w-full h-full flex items-center justify-center">
+                <div className="text-slate-600 font-black flex flex-col items-center gap-3">
+                  <div className="w-10 h-10 rounded-full border-4 border-slate-300 border-t-slate-800 animate-spin" />
+                  <span className="uppercase text-xs tracking-widest">
+                    Escaneando…
+                  </span>
+                  <div className="w-56 h-2 bg-slate-200 rounded-full overflow-hidden">
+                    <div className="h-full bg-slate-800 animate-pulse w-2/3" />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {phase === "success" && (
+              <div className="text-emerald-700 font-black flex flex-col items-center gap-2">
+                <CheckCircle size={40} />
+                <span className="uppercase text-xs tracking-widest">
+                  Validado
+                </span>
+              </div>
+            )}
+          </div>
+
+          <Button
+            className="w-full"
+            onClick={runScan}
+            disabled={phase !== "idle"}
+          >
+            <ScanLine size={16} />{" "}
+            {phase === "idle" ? actionLabel : "PROCESANDO…"}
+          </Button>
+
+          <Button variant="ghost" className="w-full" onClick={onClose}>
+            Cancelar
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Toast = ({ message, onClose, type = "success" }) => {
   useEffect(() => {
     const timer = setTimeout(onClose, 4000);
@@ -2030,7 +2133,10 @@ const GuardNotificationCenter = ({ notifications, setScreen, markAsRead }) => {
 };
 
 // 1. MÓDULO DE PROVEEDORES: Wizard con Checklist de Seguridad
-const GuardSupplierWizard = ({ setScreen, notify }) => {
+const GuardSupplierWizard = ({ setScreen, notify, addLog }) => {
+  const [scanOpen, setScanOpen] = useState(false);
+  const [scanType, setScanType] = useState(null); // "dni" | "plate"
+
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     dni: "",
@@ -2047,7 +2153,8 @@ const GuardSupplierWizard = ({ setScreen, notify }) => {
   });
 
   const updateForm = (field, value) =>
-    setFormData({ ...formData, [field]: value });
+    setFormData((prev) => ({ ...prev, [field]: value }));
+
   const toggleCheck = (field) =>
     setChecklist({ ...checklist, [field]: !checklist[field] });
 
@@ -2057,7 +2164,30 @@ const GuardSupplierWizard = ({ setScreen, notify }) => {
     notify(
       `ACCESO AUTORIZADO\nProveedor: ${formData.company}\nDestino: ${formData.destination}`
     );
+    addLog?.(
+      "PROVEEDOR",
+      `Acceso autorizado: ${formData.company} • ${
+        formData.name || "s/n"
+      } (DNI ${formData.dni || "s/d"}) → ${
+        formData.destination || "s/d"
+      } • Patente ${formData.plate || "s/d"}`
+    );
+
     setScreen("dashboard");
+  };
+
+  const simulateSupplierDNI = () => {
+    const mock = [
+      { dni: "30111222", name: "Carlos Ruiz" },
+      { dni: "28999888", name: "María Gómez" },
+      { dni: "32123456", name: "Juan Pérez" },
+    ][Math.floor(Math.random() * 3)];
+    return mock;
+  };
+
+  const simulateSupplierPlate = () => {
+    const plates = ["AE 123 BC", "AD 999 XX", "AB 456 CD", "AC 777 ZZ"];
+    return { plate: plates[Math.floor(Math.random() * plates.length)] };
   };
 
   return (
@@ -2127,12 +2257,24 @@ const GuardSupplierWizard = ({ setScreen, notify }) => {
                 <label className="text-xs font-bold uppercase text-slate-500">
                   DNI
                 </label>
-                <input
-                  className="w-full p-3 border rounded-lg bg-slate-50 font-bold"
-                  placeholder="Escanee DNI"
-                  value={formData.dni}
-                  onChange={(e) => updateForm("dni", e.target.value)}
-                />
+                <div className="flex gap-2">
+                  <input
+                    className="w-full p-3 border rounded-lg bg-slate-50 font-bold"
+                    placeholder="Escanee DNI"
+                    value={formData.dni}
+                    onChange={(e) => updateForm("dni", e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setScanType("dni");
+                      setScanOpen(true);
+                    }}
+                    className="px-3 rounded-lg border-2 border-slate-200 bg-white hover:bg-slate-50 font-black text-xs uppercase flex items-center gap-2"
+                  >
+                    <Camera size={16} /> Escanear
+                  </button>
+                </div>
               </div>
               <div>
                 <label className="text-xs font-bold uppercase text-slate-500">
@@ -2162,12 +2304,24 @@ const GuardSupplierWizard = ({ setScreen, notify }) => {
                 <label className="text-xs font-bold uppercase text-slate-500">
                   Patente Vehículo
                 </label>
-                <input
-                  className="w-full p-3 border rounded-lg bg-slate-50 uppercase"
-                  placeholder="AAA 123"
-                  value={formData.plate}
-                  onChange={(e) => updateForm("plate", e.target.value)}
-                />
+                <div className="flex gap-2">
+                  <input
+                    className="w-full p-3 border rounded-lg bg-slate-50 uppercase"
+                    placeholder="AAA 123"
+                    value={formData.plate}
+                    onChange={(e) => updateForm("plate", e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setScanType("plate");
+                      setScanOpen(true);
+                    }}
+                    className="px-3 rounded-lg border-2 border-slate-200 bg-white hover:bg-slate-50 font-black text-xs uppercase flex items-center gap-2"
+                  >
+                    <ScanLine size={16} /> LPR
+                  </button>
+                </div>
               </div>
               <div>
                 <label className="text-xs font-bold uppercase text-slate-500">
@@ -2350,6 +2504,43 @@ const GuardSupplierWizard = ({ setScreen, notify }) => {
           </div>
         )}
       </div>
+      <ScanSimModal
+        open={scanOpen}
+        onClose={() => setScanOpen(false)}
+        title={scanType === "dni" ? "Escaneo DNI" : "Detección Patente"}
+        subtitle={scanType === "dni" ? "OCR simulado" : "LPR simulado"}
+        actionLabel="CAPTURAR"
+        notify={notify}
+        simulate={() => {
+          if (scanType === "dni") return simulateSupplierDNI();
+          if (scanType === "plate") return simulateSupplierPlate();
+          return null;
+        }}
+        onResult={(result) => {
+          if (!result) return;
+
+          if (scanType === "dni") {
+            updateForm("dni", result.dni ?? "");
+            updateForm("name", result.name ?? "");
+            addLog?.(
+              "ESCANEO",
+              `Proveedor DNI escaneado: ${result.name ?? ""} (DNI ${
+                result.dni ?? ""
+              })`
+            );
+            return;
+          }
+
+          if (scanType === "plate") {
+            updateForm("plate", result.plate ?? "");
+            addLog?.(
+              "ESCANEO",
+              `Proveedor patente detectada: ${result.plate ?? ""}`
+            );
+            return;
+          }
+        }}
+      />
     </div>
   );
 };
@@ -3228,6 +3419,7 @@ const GuardLprScreen = ({
   // Generador simple de eventos mock
   const generateMockEvent = () => {
     const plates = ["AE 123 BC", "AD 999 XX", "AB 456 CD", "AC 777 ZZ"];
+    const methods = ["lpr", "facial", "combined"];
     const types = ["Propietario", "Visita", "Proveedor"];
     const confidence = `${Math.floor(90 + Math.random() * 10)}%`;
 
@@ -3240,13 +3432,19 @@ const GuardLprScreen = ({
       plate: plates[Math.floor(Math.random() * plates.length)],
       type: types[Math.floor(Math.random() * types.length)],
       confidence,
+      method: methods[Math.floor(Math.random() * methods.length)],
     };
 
     // FIX: ...prev (no .prev)
     setEvents((prev) => [e, ...prev].slice(0, 6));
 
     notify?.(`Detección LPR: ${e.plate}`, "success");
-    addLog?.("LPR", `Detección: ${e.plate} (${e.type}) conf. ${e.confidence}`);
+    addLog?.(
+      "LPR",
+      `Detección: ${e.plate} (${e.type}) • ${e.method.toUpperCase()} • conf. ${
+        e.confidence
+      }`
+    );
   };
 
   // Stream “live” simulado
@@ -3255,6 +3453,11 @@ const GuardLprScreen = ({
     const t = setInterval(generateMockEvent, 6000);
     return () => clearInterval(t);
   }, [isLive]);
+
+  const total = events.length;
+  const lprCount = events.filter((e) => e.method === "lpr").length;
+  const facialCount = events.filter((e) => e.method === "facial").length;
+  const combinedCount = events.filter((e) => e.method === "combined").length;
 
   return (
     <div className="flex flex-col h-full bg-slate-50 text-slate-800 animate-fade-in-up">
@@ -3283,7 +3486,58 @@ const GuardLprScreen = ({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        {/* ✅ Mini dashboard */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4">
+            <div className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
+              Detecciones
+            </div>
+            <div className="text-3xl font-black text-slate-800 mt-1">
+              {total}
+            </div>
+            <div className="text-xs text-slate-500 font-bold mt-1">
+              Turno / sesión actual
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4">
+            <div className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
+              LPR
+            </div>
+            <div className="text-3xl font-black text-emerald-700 mt-1">
+              {lprCount}
+            </div>
+            <div className="text-xs text-slate-500 font-bold mt-1">
+              Patente detectada
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4">
+            <div className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
+              Facial
+            </div>
+            <div className="text-3xl font-black text-blue-700 mt-1">
+              {facialCount}
+            </div>
+            <div className="text-xs text-slate-500 font-bold mt-1">
+              Reconocimiento
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4">
+            <div className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
+              Combinado
+            </div>
+            <div className="text-3xl font-black text-orange-700 mt-1">
+              {combinedCount}
+            </div>
+            <div className="text-xs text-slate-500 font-bold mt-1">
+              LPR + Facial
+            </div>
+          </div>
+        </div>
+
         {/* Stream */}
         <div className="bg-slate-900 rounded-2xl overflow-hidden shadow-xl border border-slate-800">
           <div className="p-3 flex items-center justify-between text-white border-b border-slate-800">
@@ -3350,6 +3604,7 @@ const GuardDashboard = ({
   addGlobalNotification,
   openShiftReport,
   notifications,
+  addLog,
 }) => {
   // Calcular notificaciones no leídas
   const unreadCount = notifications
@@ -3367,6 +3622,62 @@ const GuardDashboard = ({
       );
     }
   }, []);
+
+  const [autoEntryOpen, setAutoEntryOpen] = useState(false);
+  const [autoEntry, setAutoEntry] = useState(null);
+
+  const generateAutoEntry = () => {
+    const pool = [
+      {
+        method: "LPR",
+        name: "Carlos Ruiz",
+        unit: "UF 505",
+        plate: "AD 999 XX",
+        match: `${Math.floor(92 + Math.random() * 7)}%`,
+        photo: "https://placehold.co/160x160/e2e8f0/64748b?text=LPR",
+        type: "Propietario",
+      },
+      {
+        method: "Facial",
+        name: "María Gómez",
+        unit: "UF 105",
+        plate: "AE 123 BC",
+        match: `${Math.floor(90 + Math.random() * 9)}%`,
+        photo: "https://placehold.co/160x160/e2e8f0/64748b?text=FACIAL",
+        type: "Visita",
+      },
+      {
+        method: "Combined",
+        name: "Desconocido",
+        unit: "Sin unidad",
+        plate: "AC 777 ZZ",
+        match: `${Math.floor(70 + Math.random() * 20)}%`,
+        photo: "https://placehold.co/160x160/e2e8f0/64748b?text=CHECK",
+        type: "No identificado",
+      },
+    ];
+
+    return pool[Math.floor(Math.random() * pool.length)];
+  };
+
+  const openAutoEntryModal = () => {
+    const event = generateAutoEntry();
+    setAutoEntry({
+      id: Date.now(),
+      time: new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      ...event,
+    });
+    setAutoEntryOpen(true);
+
+    addLog?.(
+      "LPR",
+      `Detección automática: ${event.method} • ${event.plate} • match ${event.match}`
+    );
+    notify?.("Detección automática recibida. Revisar ingreso.", "info");
+  };
 
   return (
     <div className="flex flex-col h-full bg-slate-50 text-slate-800 font-sans">
@@ -3396,6 +3707,10 @@ const GuardDashboard = ({
               </span>
             )}
           </button>
+          <Button variant="primary" size="md" onClick={openAutoEntryModal}>
+            <ScanLine size={16} /> Simular ingreso
+          </Button>
+
           <Button variant="secondary" size="md" onClick={openShiftReport}>
             Cerrar turno
           </Button>
@@ -3489,6 +3804,108 @@ const GuardDashboard = ({
           </span>
         </button>
       </div>
+      {autoEntryOpen && autoEntry && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">
+            <div className="p-5 bg-slate-900 text-white flex items-start justify-between">
+              <div>
+                <div className="text-xs font-black uppercase tracking-widest text-emerald-300">
+                  Detección automática • {autoEntry.method}
+                </div>
+                <div className="text-xl font-black leading-tight mt-1">
+                  {autoEntry.plate}
+                </div>
+                <div className="text-xs text-white/70 font-bold mt-1">
+                  Match: {autoEntry.match} • {autoEntry.time}
+                </div>
+              </div>
+              <button
+                onClick={() => setAutoEntryOpen(false)}
+                className="text-white/70 hover:text-white"
+              >
+                <XCircle size={22} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="flex gap-4">
+                <div className="w-28 h-28 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center">
+                  <img
+                    src={autoEntry.photo}
+                    alt="Detección"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+
+                <div className="flex-1">
+                  <div className="text-xs font-black uppercase text-slate-400">
+                    Identidad sugerida
+                  </div>
+                  <div className="text-lg font-black text-slate-800">
+                    {autoEntry.name}
+                  </div>
+                  <div className="text-sm text-slate-600 font-bold">
+                    Tipo: {autoEntry.type}
+                  </div>
+                  <div className="text-sm text-slate-600">
+                    Destino: <b>{autoEntry.unit}</b>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <Button
+                  className="w-full bg-emerald-600 hover:bg-emerald-700"
+                  onClick={() => {
+                    notify?.(
+                      `Ingreso autorizado: ${autoEntry.plate}`,
+                      "success"
+                    );
+                    addLog?.(
+                      "LPR",
+                      `Ingreso autorizado: ${autoEntry.plate} • ${autoEntry.name} → ${autoEntry.unit}`
+                    );
+                    addGlobalNotification?.({
+                      type: "visit",
+                      title: "Ingreso autorizado",
+                      message: `Ingreso autorizado por ${autoEntry.method}: ${autoEntry.plate} • ${autoEntry.name}`,
+                      priority: "normal",
+                    });
+                    setAutoEntryOpen(false);
+                  }}
+                >
+                  <CheckCircle size={16} /> Autorizar
+                </Button>
+
+                <Button
+                  variant="secondary"
+                  className="w-full"
+                  onClick={() => {
+                    notify?.("Ingreso rechazado / revisión manual", "warning");
+                    addLog?.(
+                      "ALERTA",
+                      `Ingreso rechazado: ${autoEntry.plate} • match ${autoEntry.match}`
+                    );
+                    addGlobalNotification?.({
+                      type: "alert",
+                      title: "Ingreso rechazado",
+                      message: `Se rechazó el ingreso automático: ${autoEntry.plate}. Revisión manual requerida.`,
+                      priority: "high",
+                    });
+                    setAutoEntryOpen(false);
+                  }}
+                >
+                  <AlertTriangle size={16} /> Rechazar
+                </Button>
+              </div>
+
+              <p className="text-[11px] text-slate-400 text-center">
+                Simulación de control previo a autorizar acceso automático.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -3531,10 +3948,15 @@ const GuardView = ({
           addGlobalNotification={addGlobalNotification}
           openShiftReport={openShiftReport} // <-- PASO DIRECTO
           notifications={notifications}
+          addLog={addLog}
         />
       )}
       {screen === "supplier" && (
-        <GuardSupplierWizard setScreen={setScreen} notify={notify} />
+        <GuardSupplierWizard
+          setScreen={setScreen}
+          notify={notify}
+          addLog={addLog}
+        />
       )}
       {screen === "rounds" && (
         <GuardRoundsScreen
@@ -3568,6 +3990,7 @@ const GuardView = ({
           setScreen={setScreen}
           notify={notify}
           addGlobalNotification={addGlobalNotification}
+          addLog={addLog}
         />
       )}
       {screen === "lpr" && (
@@ -3607,7 +4030,14 @@ const GuardView = ({
   );
 };
 
-const GuardVisitsScreen = ({ setScreen, notify, addGlobalNotification }) => {
+const GuardVisitsScreen = ({
+  setScreen,
+  notify,
+  addGlobalNotification,
+  addLog,
+}) => {
+  const [scanOpen, setScanOpen] = useState(false);
+  const [scanType, setScanType] = useState(null); // "dni" | "plate" | "qr"
   const [visitMode, setVisitMode] = useState("manual");
   const [visitorName, setVisitorName] = useState("");
   const [visitorLastName, setVisitorLastName] = useState("");
@@ -3628,6 +4058,18 @@ const GuardVisitsScreen = ({ setScreen, notify, addGlobalNotification }) => {
       message: `La visita ${visitorName} ${visitorLastName} ha ingresado al barrio.`,
       priority: "normal",
     });
+    addLog?.(
+      "VISITA",
+      `Ingreso manual: ${visitorName} ${visitorLastName} (DNI ${
+        visitorDNI || "s/d"
+      }) → ${host?.unit || "s/d"} • Patente ${
+        plate || "s/d"
+      } • Ocupantes ${occupantsCount}`
+    );
+    if (identifyOthers && occupantsCount > 1) {
+      addLog?.("VISITA", `Acompañantes identificados: ${occupantsCount - 1}`);
+    }
+
     setScreen("dashboard");
   };
   // 2. Aprobación Visita (QR)
@@ -3639,7 +4081,35 @@ const GuardVisitsScreen = ({ setScreen, notify, addGlobalNotification }) => {
       message: `Tu invitado ${visit.visitor} ha ingresado correctamente.`,
       priority: "normal",
     });
+    addLog?.(
+      "VISITA",
+      `Ingreso QR validado: ${visit.visitor} (DNI ${visit.dni}) → ${visit.host} • Patente ${visit.plate} • Ocupantes ${visit.occupants}`
+    );
+
     setScreen("dashboard");
+  };
+
+  const simulateDNI = () => {
+    const mock = [
+      { name: "Juan", last: "Pérez", dni: "32123456" },
+      { name: "María", last: "Gómez", dni: "28999888" },
+      { name: "Carlos", last: "Ruiz", dni: "30111222" },
+    ][Math.floor(Math.random() * 3)];
+    return mock;
+  };
+
+  const simulatePlate = () => {
+    const plates = ["AE 123 BC", "AD 999 XX", "AB 456 CD", "AC 777 ZZ"];
+    const plate = plates[Math.floor(Math.random() * plates.length)];
+    return { plate };
+  };
+
+  const simulateQR = () => {
+    const visit =
+      AUTHORIZED_VISITS_DB[
+        Math.floor(Math.random() * AUTHORIZED_VISITS_DB.length)
+      ];
+    return visit;
   };
 
   return (
@@ -3713,24 +4183,49 @@ const GuardVisitsScreen = ({ setScreen, notify, addGlobalNotification }) => {
                 <label className="text-xs font-black uppercase text-slate-600">
                   D.N.I. N°
                 </label>
-                <input
-                  type="text"
-                  value={visitorDNI}
-                  onChange={(e) => setVisitorDNI(e.target.value)}
-                  className="w-full p-3 border-2 border-slate-200 rounded-lg bg-slate-50 focus:border-orange-500 outline-none font-bold"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={visitorDNI}
+                    onChange={(e) => setVisitorDNI(e.target.value)}
+                    className="w-full p-3 border-2 border-slate-200 rounded-lg bg-slate-50 focus:border-orange-500 outline-none font-bold"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setScanType("dni");
+                      setScanOpen(true);
+                    }}
+                    className="px-3 rounded-lg border-2 border-slate-200 bg-white hover:bg-slate-50 font-black text-xs uppercase flex items-center gap-2"
+                  >
+                    <Camera size={16} /> Escanear
+                  </button>
+                </div>
               </div>
+
               <div className="space-y-2">
                 <label className="text-xs font-black uppercase text-slate-600">
                   Dominio Vehículo
                 </label>
-                <input
-                  type="text"
-                  value={plate}
-                  onChange={(e) => setPlate(e.target.value)}
-                  className="w-full p-3 border-2 border-slate-200 rounded-lg bg-slate-50 focus:border-orange-500 outline-none font-bold uppercase"
-                  placeholder="AAA-000"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={plate}
+                    onChange={(e) => setPlate(e.target.value)}
+                    className="w-full p-3 border-2 border-slate-200 rounded-lg bg-slate-50 focus:border-orange-500 outline-none font-bold uppercase"
+                    placeholder="AAA-000"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setScanType("plate");
+                      setScanOpen(true);
+                    }}
+                    className="px-3 rounded-lg border-2 border-slate-200 bg-white hover:bg-slate-50 font-black text-xs uppercase flex items-center gap-2"
+                  >
+                    <ScanLine size={16} /> LPR
+                  </button>
+                </div>
               </div>
             </div>
             <div className="mb-6">
@@ -3868,9 +4363,10 @@ const GuardVisitsScreen = ({ setScreen, notify, addGlobalNotification }) => {
             ))}
             <div
               className="border-2 border-dashed border-slate-300 rounded-lg p-5 flex flex-col items-center justify-center text-slate-400 hover:border-orange-500 hover:text-orange-500 cursor-pointer transition-colors h-full min-h-[200px]"
-              onClick={() =>
-                notify("Simulación: Cámara activada para escanear QR", "info")
-              }
+              onClick={() => {
+                setScanType("qr");
+                setScanOpen(true);
+              }}
             >
               <Camera size={40} className="mb-2" />
               <span className="font-bold">ESCANEAR QR</span>
@@ -3878,6 +4374,61 @@ const GuardVisitsScreen = ({ setScreen, notify, addGlobalNotification }) => {
           </div>
         )}
       </div>
+      <ScanSimModal
+        open={scanOpen}
+        onClose={() => setScanOpen(false)}
+        title={
+          scanType === "dni"
+            ? "Escaneo DNI"
+            : scanType === "plate"
+            ? "Detección Patente"
+            : "Escaneo QR"
+        }
+        subtitle={
+          scanType === "dni"
+            ? "OCR simulado"
+            : scanType === "plate"
+            ? "LPR simulado"
+            : "Validación de invitación"
+        }
+        actionLabel="CAPTURAR"
+        notify={notify}
+        simulate={() => {
+          if (scanType === "dni") return simulateDNI();
+          if (scanType === "plate") return simulatePlate();
+          if (scanType === "qr") return simulateQR();
+          return null;
+        }}
+        onResult={(result) => {
+          if (!result) return;
+
+          if (scanType === "dni") {
+            setVisitorName(result.name ?? "");
+            setVisitorLastName(result.last ?? "");
+            setVisitorDNI(result.dni ?? "");
+
+            addLog?.(
+              "ESCANEO",
+              `DNI escaneado: ${result.name ?? ""} ${result.last ?? ""} (DNI ${
+                result.dni ?? ""
+              })`
+            );
+            return;
+          }
+
+          if (scanType === "plate") {
+            setPlate(result.plate ?? "");
+            addLog?.("ESCANEO", `Patente detectada: ${result.plate ?? ""}`);
+            return;
+          }
+
+          if (scanType === "qr") {
+            addLog?.("ESCANEO", `QR escaneado: ${result.visitor ?? "Visita"}`);
+            handleAuthorizeEntry(result);
+            return;
+          }
+        }}
+      />
     </div>
   );
 };
