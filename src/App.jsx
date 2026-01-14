@@ -3436,9 +3436,9 @@ const GuardLprScreen = ({
     };
 
     // FIX: ...prev (no .prev)
-    setEvents((prev) => [e, ...prev].slice(0, 6));
+    setEvents((prev) => [e, ...prev].slice(0, 200)); // Máx 200 eventos
 
-    notify?.(`Detección LPR: ${e.plate}`, "success");
+    notify?.(`Detección LPR: ${e.plate ?? "SIN PATENTE"}`, "success");
     addLog?.(
       "LPR",
       `Detección: ${e.plate} (${e.type}) • ${e.method.toUpperCase()} • conf. ${
@@ -5113,7 +5113,7 @@ const ResidentHomeTab = ({
         </button>
         <button
           onClick={() => setActiveScreen("amenities")}
-          className="bg-white p-5 rounded-xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] border border-slate-100 flex flex-col justify-between h-36 active:scale-95 transition-all group hover:border-orange-500 border-2 border-transparent"
+          className="bg-white p-5 rounded-xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07) border-slate-100 flex flex-col justify-between h-36 active:scale-95 transition-all group hover:border-orange-500 border-2 border-transparent"
         >
           <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center text-slate-600 group-hover:bg-slate-800 group-hover:text-white transition-colors">
             <Calendar size={20} />
@@ -5260,6 +5260,55 @@ const EmergencyOverlay = ({ notifications, setActiveScreen }) => {
   );
 };
 
+const ResidentSafetyCheckModal = ({
+  open,
+  title,
+  message,
+  onOk,
+  onHelp,
+  onClose,
+}) => {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[200] bg-black/70 flex items-center justify-center p-4 backdrop-blur-sm">
+      <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden">
+        <div className="p-5 bg-red-600 text-white">
+          <h3 className="text-lg font-black uppercase leading-tight">
+            {title}
+          </h3>
+          <p className="text-xs text-white/90 mt-2 leading-relaxed">
+            {message}
+          </p>
+        </div>
+
+        <div className="p-5 space-y-3">
+          <button
+            onClick={onOk}
+            className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-sm"
+          >
+            ✅ Estoy bien
+          </button>
+
+          <button
+            onClick={onHelp}
+            className="w-full py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black uppercase text-sm"
+          >
+            🚨 Necesito ayuda
+          </button>
+
+          <button
+            onClick={onClose}
+            className="w-full py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-black uppercase text-xs"
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const ResidentView = ({
   onBack,
   notify,
@@ -5268,6 +5317,39 @@ const ResidentView = ({
   addGlobalNotification,
 }) => {
   const [activeScreen, setActiveScreen] = useState("home");
+  const [safetyModalOpen, setSafetyModalOpen] = useState(false);
+  const [activeEmergencyNotif, setActiveEmergencyNotif] = useState(null);
+  const [ackEmergencyId, setAckEmergencyId] = useState(null); // ✅ evita loop
+
+  useEffect(() => {
+    const emergency = notifications.find(
+      (n) =>
+        !n.read &&
+        (n.type === "evacuation" ||
+          n.priority === "critical" ||
+          String(n.title || "")
+            .toUpperCase()
+            .includes("ALERTA"))
+    );
+
+    if (!emergency) return;
+
+    // ✅ si ya fue “ack”, no volver a abrir
+    if (ackEmergencyId === emergency.id) return;
+
+    setActiveEmergencyNotif(emergency);
+    setSafetyModalOpen(true);
+  }, [notifications, ackEmergencyId]);
+
+  // UF mock (por ahora fijo como en tu SOS)
+  const residentUnit = "UF 402";
+  const residentLocation = MOCK_COORDINATES[residentUnit] || { x: 50, y: 50 };
+
+  const emergencyTitle = activeEmergencyNotif?.title || "ALERTA DE EMERGENCIA";
+
+  const emergencyMessage =
+    activeEmergencyNotif?.message ||
+    "¿Se encuentra bien? ¿Logró evacuar? Responda para informar su estado.";
 
   return (
     <>
@@ -5306,6 +5388,52 @@ const ResidentView = ({
           addGlobalNotification={addGlobalNotification}
         />
       )}
+      <ResidentSafetyCheckModal
+        open={safetyModalOpen}
+        title={emergencyTitle}
+        message={emergencyMessage}
+        onClose={() => {
+          if (activeEmergencyNotif?.id)
+            setAckEmergencyId(activeEmergencyNotif.id);
+          setSafetyModalOpen(false);
+        }}
+        onOk={() => {
+          if (activeEmergencyNotif?.id)
+            setAckEmergencyId(activeEmergencyNotif.id);
+
+          notify?.("Estado registrado: OK", "success");
+          addGlobalNotification?.({
+            type: "alert",
+            priority: "normal",
+            title: `RESIDENTE OK • UF 402`,
+            message: `El residente reporta: ESTOY BIEN. (Origen: ${
+              activeEmergencyNotif?.title ?? "Alerta"
+            })`,
+            color: "orange",
+            location: MOCK_COORDINATES["UF 402"] || { x: 50, y: 50 },
+          });
+
+          setSafetyModalOpen(false);
+        }}
+        onHelp={() => {
+          if (activeEmergencyNotif?.id)
+            setAckEmergencyId(activeEmergencyNotif.id);
+
+          notify?.("Estado registrado: NECESITA AYUDA", "error");
+          addGlobalNotification?.({
+            type: "alert",
+            priority: "critical",
+            title: `RESIDENTE SOLICITA AYUDA • UF 402`,
+            message: `El residente reporta: NECESITO AYUDA. (Origen: ${
+              activeEmergencyNotif?.title ?? "Alerta"
+            })`,
+            color: "red",
+            location: MOCK_COORDINATES["UF 402"] || { x: 50, y: 50 },
+          });
+
+          setSafetyModalOpen(false);
+        }}
+      />
     </>
   );
 };
