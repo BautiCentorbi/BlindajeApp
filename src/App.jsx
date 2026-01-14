@@ -4046,6 +4046,29 @@ const GuardVisitsScreen = ({
   const [plate, setPlate] = useState("");
   const [occupantsCount, setOccupantsCount] = useState(1);
   const [identifyOthers, setIdentifyOthers] = useState(false);
+  const [activeVisits, setActiveVisits] = useState(() => [
+    {
+      id: 101,
+      visitor: "Juan Pérez",
+      dni: "32123456",
+      host: "UF 402",
+      plate: "AE 123 BC",
+      occupants: 2,
+      entryTime: "10:15",
+      source: "QR",
+    },
+    {
+      id: 102,
+      visitor: "María Gómez",
+      dni: "28999888",
+      host: "UF 105",
+      plate: "AD 999 XX",
+      occupants: 1,
+      entryTime: "11:05",
+      source: "MANUAL",
+    },
+  ]);
+  const [visitHistory, setVisitHistory] = useState([]);
 
   // 2. Aprobación Visita (Manual)
   const handleManualRegister = () => {
@@ -4070,7 +4093,24 @@ const GuardVisitsScreen = ({
       addLog?.("VISITA", `Acompañantes identificados: ${occupantsCount - 1}`);
     }
 
-    setScreen("dashboard");
+    setActiveVisits((prev) => [
+      {
+        id: Date.now(),
+        visitor: `${visitorName} ${visitorLastName}`.trim(),
+        dni: visitorDNI || "s/d",
+        host: host?.unit || "s/d",
+        plate: plate || "s/d",
+        occupants: occupantsCount,
+        entryTime: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        source: "MANUAL",
+      },
+      ...prev,
+    ]);
+
+    setVisitMode("active");
   };
   // 2. Aprobación Visita (QR)
   const handleAuthorizeEntry = (visit) => {
@@ -4085,6 +4125,24 @@ const GuardVisitsScreen = ({
       "VISITA",
       `Ingreso QR validado: ${visit.visitor} (DNI ${visit.dni}) → ${visit.host} • Patente ${visit.plate} • Ocupantes ${visit.occupants}`
     );
+    setActiveVisits((prev) => [
+      {
+        id: Date.now(),
+        visitor: visit.visitor,
+        dni: visit.dni || "s/d",
+        host: visit.host || "s/d",
+        plate: visit.plate || "s/d",
+        occupants: visit.occupants ?? 1,
+        entryTime:
+          visit.time ||
+          new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        source: "QR",
+      },
+      ...prev,
+    ]);
 
     setScreen("dashboard");
   };
@@ -4138,6 +4196,7 @@ const GuardVisitsScreen = ({
           >
             REGISTRO MANUAL
           </button>
+
           <button
             onClick={() => setVisitMode("authorized")}
             className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${
@@ -4147,6 +4206,23 @@ const GuardVisitsScreen = ({
             }`}
           >
             VISITAS AUTORIZADAS (QR)
+          </button>
+          
+
+          <button
+            onClick={() => setVisitMode("active")}
+            className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${
+              visitMode === "active"
+                ? "bg-white text-blue-600 shadow-sm"
+                : "text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            VISITAS ACTIVAS
+            {activeVisits.length > 0 && (
+              <span className="ml-2 inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-black">
+                {activeVisits.length}
+              </span>
+            )}
           </button>
         </div>
       </div>
@@ -4319,7 +4395,7 @@ const GuardVisitsScreen = ({
               </Button>
             </div>
           </div>
-        ) : (
+        ) : visitMode === "authorized" ? (
           <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {AUTHORIZED_VISITS_DB.map((visit) => (
               <div
@@ -4371,6 +4447,108 @@ const GuardVisitsScreen = ({
               <Camera size={40} className="mb-2" />
               <span className="font-bold">ESCANEAR QR</span>
             </div>
+          </div>
+        ) : (
+          <div className="max-w-4xl mx-auto space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-black uppercase text-slate-500">
+                Visitas activas ({activeVisits.length})
+              </h3>
+            </div>
+
+            {activeVisits.length === 0 ? (
+              <div className="p-8 text-center border-2 border-dashed border-slate-300 rounded-xl text-slate-400 font-bold">
+                No hay visitas activas en este momento.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {activeVisits.map((v) => (
+                  <div
+                    key={v.id}
+                    className="bg-white border border-slate-200 rounded-xl shadow-sm p-5 flex justify-between gap-4"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-black text-slate-800">
+                          {v.visitor}
+                        </h4>
+                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-blue-50 text-blue-700">
+                          {v.source}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 font-bold mt-1">
+                        DNI: {v.dni}
+                      </p>
+                      <div className="text-sm text-slate-600 mt-2 space-y-1">
+                        <div>
+                          Destino: <b>{v.host}</b>
+                        </div>
+                        <div>
+                          Patente:{" "}
+                          <span className="font-mono font-bold uppercase">
+                            {v.plate}
+                          </span>
+                        </div>
+                        <div>Ocupantes: {v.occupants}</div>
+                      </div>
+                      <p className="text-[10px] text-slate-400 font-mono mt-2">
+                        Ingreso: {v.entryTime}
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        setVisitHistory((prev) => [
+                          {
+                            ...v,
+                            exitTime: new Date().toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            }),
+                          },
+                          ...prev,
+                        ]);
+                        setActiveVisits((prev) =>
+                          prev.filter((x) => x.id !== v.id)
+                        );
+
+                        notify?.(`Egreso registrado: ${v.visitor}`, "success");
+                        addLog?.(
+                          "VISITA",
+                          `Egreso registrado: ${v.visitor} → ${v.host} • Patente ${v.plate}`
+                        );
+                      }}
+                      className="h-fit px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-black uppercase"
+                    >
+                      Marcar egreso
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {visitHistory.length > 0 && (
+              <div className="pt-6 opacity-80">
+                <h3 className="text-xs font-black uppercase text-slate-400 mb-2">
+                  Egresos recientes
+                </h3>
+                <div className="space-y-2">
+                  {visitHistory.slice(0, 5).map((h) => (
+                    <div
+                      key={h.id}
+                      className="bg-slate-50 border border-slate-200 rounded-lg p-3 flex justify-between text-xs"
+                    >
+                      <span className="font-bold text-slate-700">
+                        {h.visitor}
+                      </span>
+                      <span className="font-mono text-slate-500">
+                        {h.entryTime} → {h.exitTime}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -5647,7 +5825,6 @@ const LocalAdminView = ({
             label="Reservas SUM"
             tabId="reservations"
           />
-          <SidebarItem icon={FileText} label="Reportes" tabId="reports" />
         </nav>
         <div className="p-4 border-t border-slate-100">
           <div className="flex items-center gap-3 mb-4">
@@ -5677,8 +5854,6 @@ const LocalAdminView = ({
                 ? "Resumen Operativo"
                 : activeTab === "users"
                 ? "Gestión de Residentes"
-                : activeTab === "reports"
-                ? "Centro de Reportes"
                 : activeTab}
             </h2>
             <p className="text-sm text-slate-500 font-medium">
@@ -5703,7 +5878,6 @@ const LocalAdminView = ({
             notify={notify}
           />
         )}
-        {activeTab === "reports" && <ReportsModule notify={notify} />}
         {activeTab === "dashboard" && (
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
