@@ -1,7 +1,14 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Shield,
+  Download,
+  Building2,
+  Upload,
   PhoneCall,
+  MinusCircle,
+  AlertCircle,
+  Tag,
+  Car,
   LocateFixed,
   ChevronUp,
   FileCheck,
@@ -641,6 +648,370 @@ const ScanSimModal = ({
     </div>
   );
 };
+
+const ReportsModuleV2 = ({
+  notify,
+  visits = [],
+  suppliers = [],
+  incidents = [],
+  packages = [],
+  amenities = [],
+}) => {
+  const [tab, setTab] = useState("visits"); // visits | amenities | incidents | suppliers | packages
+
+  // Fechas: simples strings tipo "YYYY-MM-DD"
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const [dateFrom, setDateFrom] = useState(todayISO);
+  const [dateTo, setDateTo] = useState(todayISO);
+
+  // Helpers ----------------------------------------------------
+  const toDate = (d) => {
+    if (!d) return null;
+    // acepta "YYYY-MM-DD"
+    const dt = new Date(d);
+    return Number.isNaN(dt.getTime()) ? null : dt;
+  };
+
+  const isWithin = (itemDateISO) => {
+    // si no hay fecha en el item, no filtramos (lo dejamos visible)
+    const d = toDate(itemDateISO);
+    if (!d) return true;
+
+    const from = toDate(dateFrom);
+    const to = toDate(dateTo);
+
+    if (!from || !to) return true;
+
+    // incluir todo el día "to"
+    const toEnd = new Date(to);
+    toEnd.setHours(23, 59, 59, 999);
+
+    return d >= from && d <= toEnd;
+  };
+
+  const exportCSV = (rows, columns, filename = "reporte.csv") => {
+    try {
+      const header = columns.map((c) => c.label);
+      const body = rows.map((r) =>
+        columns.map((c) => {
+          const v = typeof c.get === "function" ? c.get(r) : r?.[c.key];
+          const safe = String(v ?? "").replaceAll('"', '""');
+          return `"${safe}"`;
+        })
+      );
+
+      const csv = [header.join(","), ...body.map((r) => r.join(","))].join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+
+      URL.revokeObjectURL(url);
+      notify?.("CSV exportado correctamente", "success");
+    } catch (e) {
+      console.error(e);
+      notify?.("No se pudo exportar el CSV", "error");
+    }
+  };
+
+  // Data normalizada por tab -----------------------------------
+  const current = useMemo(() => {
+    if (tab === "visits") {
+      // Esperado: { id, visitor, dni, host, plate, time, status, date? }
+      const rows = (visits ?? []).filter((v) => isWithin(v.date));
+      const total = rows.length;
+
+      const ingresaron = rows.filter((v) =>
+        String(v.status ?? "").toLowerCase().includes("ingres")
+      ).length;
+
+      const salieron = rows.filter((v) =>
+        String(v.status ?? "").toLowerCase().includes("sal")
+      ).length;
+
+      const avgMin = 0; // si no tenés duración real aún, lo dejamos en 0
+
+      const stats = [
+        { label: "Total visitas", value: total, tone: "blue", icon: Users },
+        { label: "Ingresos", value: ingresaron, tone: "emerald", icon: Download },
+        { label: "Salidas", value: salieron, tone: "orange", icon: Upload },
+        { label: "Minutos promedio", value: avgMin, tone: "purple", icon: Clock },
+      ];
+
+      const columns = [
+        { key: "date", label: "FECHA", get: (v) => v.date ?? "-" },
+        { key: "visitor", label: "VISITANTE", get: (v) => v.visitor ?? "-" },
+        { key: "host", label: "UNIDAD", get: (v) => v.host ?? "-" },
+        { key: "status", label: "ESTADO", get: (v) => v.status ?? "-" },
+        { key: "plate", label: "PATENTE", get: (v) => v.plate ?? "-" },
+      ];
+
+      return { title: "Reportes • Visitas", stats, rows, columns, filename: "reporte-visitas.csv" };
+    }
+
+    if (tab === "incidents") {
+      // Esperado: { id, type, detail, time, severity, status, date? }
+      const rows = (incidents ?? []).filter((i) => isWithin(i.date));
+      const total = rows.length;
+
+      const low = rows.filter((i) => String(i.severity ?? "").toLowerCase().includes("baja")).length;
+      const med = rows.filter((i) => String(i.severity ?? "").toLowerCase().includes("media")).length;
+      const crit = rows.filter((i) =>
+        String(i.severity ?? "").toLowerCase().includes("alta") ||
+        String(i.severity ?? "").toLowerCase().includes("crít") ||
+        String(i.severity ?? "").toLowerCase().includes("crit")
+      ).length;
+
+      const stats = [
+        { label: "Total incidentes", value: total, tone: "red", icon: AlertTriangle },
+        { label: "Baja", value: low, tone: "slate", icon: MinusCircle },
+        { label: "Media", value: med, tone: "orange", icon: AlertCircle },
+        { label: "Crítica", value: crit, tone: "redStrong", icon: Flame },
+      ];
+
+      const columns = [
+        { key: "date", label: "FECHA", get: (i) => i.date ?? "-" },
+        { key: "time", label: "HORA", get: (i) => i.time ?? "-" },
+        { key: "type", label: "TIPO", get: (i) => i.type ?? "-" },
+        { key: "severity", label: "SEVERIDAD", get: (i) => i.severity ?? "-" },
+        { key: "status", label: "ESTADO", get: (i) => i.status ?? "-" },
+      ];
+
+      return { title: "Reportes • Incidentes", stats, rows, columns, filename: "reporte-incidentes.csv" };
+    }
+
+    if (tab === "suppliers") {
+      // Esperado: { company, name, dni, category, serviceType, plate, date? }
+      const rows = (suppliers ?? []).filter((s) => isWithin(s.date));
+      const total = rows.length;
+
+      const uniqueCompanies = new Set(rows.map((s) => s.company)).size;
+      const uniqueCategories = new Set(rows.map((s) => s.category)).size;
+      const withPlate = rows.filter((s) => !!s.plate).length;
+
+      const stats = [
+        { label: "Ingresos", value: total, tone: "blue", icon: Truck },
+        { label: "Empresas", value: uniqueCompanies, tone: "slate", icon: Building2 },
+        { label: "Rubros", value: uniqueCategories, tone: "orange", icon: Tag },
+        { label: "Con patente", value: withPlate, tone: "emerald", icon: Car },
+      ];
+
+      const columns = [
+        { key: "date", label: "FECHA", get: (s) => s.date ?? "-" },
+        { key: "company", label: "EMPRESA", get: (s) => s.company ?? "-" },
+        { key: "name", label: "PERSONAL", get: (s) => s.name ?? "-" },
+        { key: "category", label: "RUBRO", get: (s) => s.category ?? "-" },
+        { key: "plate", label: "PATENTE", get: (s) => s.plate ?? "-" },
+      ];
+
+      return { title: "Reportes • Proveedores", stats, rows, columns, filename: "reporte-proveedores.csv" };
+    }
+
+    if (tab === "packages") {
+      const rows = (packages ?? []).filter((p) => isWithin(p.date));
+      const total = rows.length;
+      const pending = rows.filter((p) => String(p.status ?? "").toLowerCase() === "pending").length;
+      const notified = rows.filter((p) => String(p.status ?? "").toLowerCase() === "notified").length;
+      const delivered = rows.filter((p) => String(p.status ?? "").toLowerCase() === "delivered").length;
+
+      const stats = [
+        { label: "Paquetes", value: total, tone: "orange", icon: Package },
+        { label: "Pendientes", value: pending, tone: "slate", icon: Clock },
+        { label: "Notificados", value: notified, tone: "blue", icon: Bell },
+        { label: "Entregados", value: delivered, tone: "emerald", icon: CheckCircle },
+      ];
+
+      const columns = [
+        { key: "date", label: "FECHA", get: (p) => p.date ?? "-" },
+        { key: "unit", label: "UNIDAD", get: (p) => p.unit ?? "-" },
+        { key: "company", label: "COURIER", get: (p) => p.company ?? "-" },
+        { key: "type", label: "TIPO", get: (p) => p.type ?? "-" },
+        { key: "status", label: "ESTADO", get: (p) => p.status ?? "-" },
+      ];
+
+      return { title: "Reportes • Paquetería", stats, rows, columns, filename: "reporte-paqueteria.csv" };
+    }
+
+    // amenities (placeholder)
+    const rows = (amenities ?? []).filter((a) => isWithin(a.date));
+    const stats = [
+      { label: "Reservas", value: rows.length, tone: "blue", icon: Calendar },
+      { label: "Activas", value: 0, tone: "emerald", icon: CheckCircle },
+      { label: "Canceladas", value: 0, tone: "orange", icon: XCircle },
+      { label: "Prom. ocupación", value: "—", tone: "slate", icon: Activity },
+    ];
+    const columns = [
+      { key: "date", label: "FECHA", get: (a) => a.date ?? "-" },
+      { key: "by", label: "POR", get: (a) => a.by ?? "-" },
+      { key: "time", label: "HORARIO", get: (a) => a.time ?? "-" },
+      { key: "status", label: "ESTADO", get: (a) => a.status ?? "-" },
+    ];
+    return { title: "Reportes • Amenities", stats, rows, columns, filename: "reporte-amenities.csv" };
+  }, [tab, visits, suppliers, incidents, packages, amenities, dateFrom, dateTo]);
+
+  const tabs = [
+    { k: "visits", label: "VISITAS" },
+    { k: "amenities", label: "AMENITIES" },
+    { k: "incidents", label: "INCIDENTES" },
+    { k: "suppliers", label: "PROVEEDORES" },
+    { k: "packages", label: "PAQUETERÍA" },
+  ];
+
+  const toneToCard = (tone) => {
+    if (tone === "emerald") return "bg-emerald-50 border-emerald-200 text-emerald-700";
+    if (tone === "orange") return "bg-orange-50 border-orange-200 text-orange-700";
+    if (tone === "blue") return "bg-blue-50 border-blue-200 text-blue-700";
+    if (tone === "purple") return "bg-purple-50 border-purple-200 text-purple-700";
+    if (tone === "red") return "bg-red-50 border-red-200 text-red-700";
+    if (tone === "redStrong") return "bg-red-100 border-red-300 text-red-800";
+    return "bg-slate-50 border-slate-200 text-slate-700";
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Tabs header tipo captura */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="p-4 border-b border-slate-100">
+          <div className="flex flex-wrap gap-2">
+            {tabs.map((t) => (
+              <button
+                key={t.k}
+                onClick={() => setTab(t.k)}
+                className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wide border transition-colors ${
+                  tab === t.k
+                    ? "bg-orange-50 text-orange-700 border-orange-200"
+                    : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Filtros */}
+        <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+          <div className="space-y-1">
+            <label className="text-[10px] font-black uppercase text-slate-400">
+              Fecha inicio
+            </label>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm font-bold"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[10px] font-black uppercase text-slate-400">
+              Fecha fin
+            </label>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm font-bold"
+            />
+          </div>
+
+          <button
+            onClick={() => exportCSV(current.rows, current.columns, current.filename)}
+            className="h-10 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-xs flex items-center justify-center gap-2 shadow-sm"
+          >
+            <Download size={16} /> Exportar CSV
+          </button>
+        </div>
+      </div>
+
+      {/* Stats cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {(current.stats ?? []).map((s, idx) => {
+          const Icon = s.icon;
+          return (
+            <div
+              key={idx}
+              className={`rounded-2xl border p-5 shadow-sm ${toneToCard(s.tone)}`}
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="text-3xl font-black leading-none">{s.value}</div>
+                  <div className="text-[11px] font-black uppercase mt-1 opacity-80">
+                    {s.label}
+                  </div>
+                </div>
+                {Icon ? <Icon size={22} className="opacity-80" /> : null}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Tabla */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+          <h3 className="font-black text-slate-800 uppercase tracking-tight text-sm">
+            {current.title}
+          </h3>
+          <div className="text-xs text-slate-400 font-bold">
+            {current.rows.length} registros
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-slate-50 text-slate-500 uppercase text-xs font-black">
+              <tr>
+                {current.columns.map((c) => (
+                  <th key={c.label} className="px-6 py-3">
+                    {c.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+
+            <tbody className="divide-y divide-slate-100">
+              {current.rows.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={current.columns.length}
+                    className="px-6 py-10 text-center text-slate-400 font-bold"
+                  >
+                    No hay datos para este rango.
+                  </td>
+                </tr>
+              ) : (
+                current.rows.map((row, i) => (
+                  <tr key={row.id ?? i} className="hover:bg-slate-50 transition-colors">
+                    {current.columns.map((c) => {
+                      const val = typeof c.get === "function" ? c.get(row) : row?.[c.key];
+                      return (
+                        <td key={c.label} className="px-6 py-4 text-slate-700">
+                          {val}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Nota mock */}
+      {(tab === "packages" && (!packages || packages.length === 0)) && (
+        <div className="text-[11px] text-slate-400 font-bold">
+          Nota: Paquetería aún no tiene DB conectada en Admin. Cuando la tengas, pasala como prop: packages=PACKAGES_DB.
+        </div>
+      )}
+    </div>
+  );
+};
+
 
 const Toast = ({ message, onClose, type = "success" }) => {
   useEffect(() => {
@@ -5842,6 +6213,61 @@ const ResidentAmenitiesScreen = ({
   );
 };
 
+const ResidentSOSConfirmModal = ({
+  open,
+  onClose,
+  onConfirm,
+  unit = "UF 402",
+}) => {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[200] bg-black/70 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in-up">
+      <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
+        <div className="bg-red-600 text-white p-5">
+          <h3 className="text-lg font-black uppercase tracking-wide">
+            Confirmar SOS / Emergencia
+          </h3>
+          <p className="text-xs text-red-100 font-bold mt-1">
+            Esta acción enviará una alerta crítica a Guardia y Central.
+          </p>
+        </div>
+
+        <div className="p-5 space-y-4">
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+            <p className="text-sm text-slate-800 font-bold">
+              Unidad: <span className="font-black">{unit}</span>
+            </p>
+            <p className="text-xs text-slate-500 mt-1">
+              Usar solo ante una situación real o simulacro autorizado.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={onClose}
+              className="py-3 rounded-xl bg-slate-100 text-slate-700 font-black uppercase text-xs hover:bg-slate-200 transition-colors"
+            >
+              Cancelar
+            </button>
+
+            <button
+              onClick={onConfirm}
+              className="py-3 rounded-xl bg-red-600 text-white font-black uppercase text-xs hover:bg-red-700 transition-colors shadow-lg shadow-red-200 flex items-center justify-center gap-2"
+            >
+              CONFIRMAR SOS
+            </button>
+          </div>
+
+          <p className="text-[11px] text-slate-400 text-center">
+            Si fue un error, toque “Cancelar”.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const ResidentHomeTab = ({
   setActiveScreen,
   notify,
@@ -5849,6 +6275,7 @@ const ResidentHomeTab = ({
   onLogout,
   addGlobalNotification,
 }) => {
+  const [sosConfirmOpen, setSosConfirmOpen] = useState(false);
   const unreadCount = notifications.filter((n) => !n.read).length;
   const hasCritical = notifications.some(
     (n) => n.priority === "critical" && !n.read
@@ -5856,16 +6283,7 @@ const ResidentHomeTab = ({
 
   // NUEVO: SOS AHORA ENVÍA UBICACIÓN
   const handleSOS = () => {
-    const mockLocation = MOCK_COORDINATES["UF 402"] || { x: 50, y: 50 }; // Simular GPS de la unidad del usuario logueado
-    addGlobalNotification({
-      type: "alert",
-      priority: "critical",
-      title: "ALERTA SOS - UF 402",
-      message: "El residente de la UF 402 ha activado el botón de pánico.",
-      color: "red",
-      location: mockLocation,
-    });
-    notify("SOS Enviado a Guardia y Central de Monitoreo", "error");
+    setSosConfirmOpen(true);
   };
 
   return (
@@ -5965,7 +6383,7 @@ const ResidentHomeTab = ({
       <div className="grid grid-cols-2 gap-4">
         <button
           onClick={() => setActiveScreen("new_visit")}
-          className="bg-white p-5 rounded-xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] border border-slate-100 flex flex-col justify-between h-36 active:scale-95 transition-all group hover:border-orange-500 border-2 border-transparent"
+          className="bg-white p-5 rounded-xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] border-slate-100 flex flex-col justify-between h-36 active:scale-95 transition-all group hover:border-orange-500 border-2 border-transparent"
         >
           <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-colors">
             <UserPlus size={20} />
@@ -6054,6 +6472,28 @@ const ResidentHomeTab = ({
           </button>
         </div>
       </div>
+      <ResidentSOSConfirmModal
+        open={sosConfirmOpen}
+        unit={"UF 402"}
+        onClose={() => setSosConfirmOpen(false)}
+        onConfirm={() => {
+          setSosConfirmOpen(false);
+
+          const mockLocation = MOCK_COORDINATES["UF 402"] || { x: 50, y: 50 };
+
+          addGlobalNotification({
+            type: "alert",
+            priority: "critical",
+            title: "ALERTA SOS - UF 402",
+            message:
+              "El residente de la UF 402 ha activado el botón de pánico.",
+            color: "red",
+            location: mockLocation,
+          });
+
+          notify("SOS Enviado a Guardia y Central de Monitoreo", "error");
+        }}
+      />
     </div>
   );
 };
@@ -6448,6 +6888,147 @@ const LoginScreen = ({ role, onLoginSuccess, onBack }) => {
   );
 };
 
+// ======================
+// Helpers: ofuscación para Admin (SuperAdmin)
+// ======================
+const maskDigits = (s, keepLast = 2) => {
+  const str = String(s ?? "");
+  // ofusca bloques de dígitos (ej: DNI)
+  return str.replace(/\d{6,}/g, (m) => {
+    const kept = m.slice(-keepLast);
+    const masked = "•".repeat(Math.max(0, m.length - keepLast));
+    return masked + kept;
+  });
+};
+
+const maskPlate = (s) => {
+  const str = String(s ?? "");
+  // Patentes tipo "AE 123 BC", "AE123BC", etc.
+  return str.replace(
+    /\b([A-Z]{2})\s?(\d{3})\s?([A-Z]{2})\b/g,
+    (_m, a, b, c) => {
+      // AE ••• BC (oculta números)
+      return `${a} ••• ${c}`;
+    }
+  );
+};
+
+const maskNameLike = (s) => {
+  const str = String(s ?? "");
+  // Ofusca "Nombre Apellido" conservando iniciales
+  // Ej: "Juan Pérez" -> "J••• P•••"
+  return str.replace(/\b([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)\b/g, (w) => {
+    if (w.length <= 2) return w[0] + "•";
+    return w[0] + "•".repeat(Math.min(3, w.length - 1));
+  });
+};
+
+const sanitizeNotificationForAdmin = (notif) => {
+  // Admin ve la notificación, pero sin PII en texto
+  const title = maskPlate(maskDigits(maskNameLike(notif?.title)));
+  const message = maskPlate(maskDigits(maskNameLike(notif?.message)));
+
+  return {
+    ...notif,
+    title,
+    message,
+    // opcional: esconder location exacta si querés (yo la dejo)
+    // location: notif?.location ? { x: 0, y: 0 } : notif?.location,
+  };
+};
+
+const AdminNotificationCenter = ({
+  notifications = [],
+  markAsRead,
+  title = "NOTIFICACIONES",
+  sanitize = (n) => n,
+}) => {
+  const list = (notifications ?? []).map(sanitize);
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+        <h3 className="font-black text-slate-800 uppercase tracking-tight text-sm">
+          {title}
+        </h3>
+        <div className="text-xs text-slate-400 font-bold">
+          {list.filter((n) => !n.read).length} sin leer
+        </div>
+      </div>
+
+      <div className="p-4 space-y-3">
+        {list.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-48 text-slate-400">
+            <Bell size={42} className="mb-2 opacity-20" />
+            <p className="font-bold text-sm">No hay notificaciones</p>
+          </div>
+        ) : (
+          list.map((notif) => (
+            <div
+              key={notif.id}
+              className={`bg-white p-4 rounded-xl border-l-4 shadow-sm relative overflow-hidden transition-all ${
+                notif.read ? "border-slate-300 opacity-70" : "border-orange-500"
+              }`}
+            >
+              {notif.priority === "critical" && (
+                <div className="absolute inset-0 bg-red-500/10 animate-pulse pointer-events-none" />
+              )}
+
+              <div className="flex justify-between items-start mb-1 relative z-10">
+                <span
+                  className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${
+                    notif.priority === "critical"
+                      ? "bg-red-600 text-white"
+                      : "bg-slate-100 text-slate-500"
+                  }`}
+                >
+                  {notif.priority === "critical"
+                    ? "ALERTA CRÍTICA"
+                    : notif.type === "package"
+                    ? "PAQUETERÍA"
+                    : notif.type === "visit"
+                    ? "VISITAS"
+                    : notif.type === "evacuation"
+                    ? "EVACUACIÓN"
+                    : notif.type === "alert"
+                    ? "ALERTA"
+                    : "GENERAL"}
+                </span>
+                <span className="text-[10px] text-slate-400 font-bold">
+                  {notif.date}
+                </span>
+              </div>
+
+              <h3
+                className={`font-bold text-sm mb-1 relative z-10 ${
+                  notif.priority === "critical"
+                    ? "text-red-600"
+                    : "text-slate-800"
+                }`}
+              >
+                {notif.title}
+              </h3>
+
+              <p className="text-xs text-slate-500 leading-relaxed mb-3 relative z-10 whitespace-pre-line">
+                {notif.message}
+              </p>
+
+              {!notif.read && (
+                <button
+                  onClick={() => markAsRead?.(notif.id)}
+                  className="text-[10px] font-black text-orange-600 uppercase hover:underline relative z-10"
+                >
+                  Marcar como leído
+                </button>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+};
+
 const LocalAdminView = ({
   onBack,
   currentUser,
@@ -6458,6 +7039,7 @@ const LocalAdminView = ({
 }) => {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [residents, setResidents] = useState(RESIDENTS_DB);
+  const unreadCount = notifications?.filter((n) => !n.read).length ?? 0;
 
   const SidebarItem = ({ icon: Icon, label, tabId }) => (
     <div
@@ -6572,6 +7154,18 @@ const LocalAdminView = ({
               <Button variant="primary" size="sm" onClick={sendBroadcast}>
                 <Send size={16} /> Enviar Comunicado
               </Button>
+              <button
+                onClick={() => setActiveTab("notifications")}
+                className="bg-white p-2 rounded-full border border-slate-200 relative shadow-sm hover:bg-slate-50 transition-colors"
+                aria-label="Notificaciones"
+              >
+                <Bell className="text-slate-600" size={18} />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-black flex items-center justify-center rounded-full border-2 border-white">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
             </div>
           )}
         </header>
@@ -6582,6 +7176,15 @@ const LocalAdminView = ({
             notify={notify}
           />
         )}
+        {activeTab === "notifications" && (
+          <AdminNotificationCenter
+            notifications={notifications}
+            markAsRead={markAsRead}
+            title="NOTIFICACIONES (ADMIN LOCAL)"
+            sanitize={(n) => n} // ✅ ve todo igual que guard/residente
+          />
+        )}
+
         {activeTab === "dashboard" && (
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -6884,6 +7487,8 @@ const LocalAdminView = ({
 
 const AdminView = ({ onBack, notify, notifications, markAsRead }) => {
   const [activeTab, setActiveTab] = useState("dashboard");
+  const unreadCount = notifications?.filter((n) => !n.read).length ?? 0;
+
   const SidebarItem = ({ icon: Icon, label, tabId }) => (
     <div
       onClick={() => setActiveTab(tabId)}
@@ -6951,14 +7556,41 @@ const AdminView = ({ onBack, notify, notifications, markAsRead }) => {
             </p>
           </div>
           <div className="flex items-center gap-4">
-            <div className="bg-white p-2 rounded-full border border-slate-200 relative shadow-sm">
-              <Bell className="text-slate-500" size={20} />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
-            </div>
+            <button
+              onClick={() => setActiveTab("notifications")}
+              className="bg-white p-2 rounded-full border border-slate-200 relative shadow-sm hover:bg-slate-50 transition-colors"
+              aria-label="Notificaciones"
+            >
+              <Bell className="text-slate-600" size={20} />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-black flex items-center justify-center rounded-full border-2 border-white">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
           </div>
         </header>
         <div className="p-8">
-          {activeTab === "reports" && <ReportsModule notify={notify} />}
+          {activeTab === "reports" && (
+  <ReportsModuleV2
+    notify={notify}
+    visits={AUTHORIZED_VISITS_DB}
+    suppliers={SUPPLIERS_DB}
+    incidents={INCIDENTS_DB}
+    // packages={PACKAGES_DB} // si la tenés, la pasás; sino queda vacío
+    // amenities={AMENITIES_DB} // si la tenés
+  />
+)}
+
+          {activeTab === "notifications" && (
+            <AdminNotificationCenter
+              notifications={notifications}
+              markAsRead={markAsRead}
+              title="NOTIFICACIONES (ADMIN)"
+              sanitize={sanitizeNotificationForAdmin} // ✅ acá se ofusca
+            />
+          )}
+
           {activeTab === "dashboard" && (
             <>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -7080,6 +7712,7 @@ const AdminView = ({ onBack, notify, notifications, markAsRead }) => {
 export default function App() {
   const [currentRole, setCurrentRole] = useState(null);
   const [currentUser, setCurrentUser] = useState("");
+  
 
   const normalizeTask = (t) => ({
     id: t.id ?? Date.now(),
