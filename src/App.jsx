@@ -3121,6 +3121,72 @@ const GuardRoundsScreen = ({ setScreen, notify, addLog }) => {
     }
     setUserLocation(targetPos);
   };
+  // --- INCIDENTES EN RONDAS ---
+  const [incidentOpen, setIncidentOpen] = useState(false);
+  const [incidentPoint, setIncidentPoint] = useState(null); // {id, name}
+  const [incidentType, setIncidentType] = useState("NOVEDAD");
+  const [incidentDetail, setIncidentDetail] = useState("");
+
+  // Novedades generales
+  const [generalNotes, setGeneralNotes] = useState("");
+
+  const openIncidentModal = (point) => {
+    setIncidentPoint({ id: point.id, name: point.name });
+    setIncidentType("NOVEDAD");
+    setIncidentDetail("");
+    setIncidentOpen(true);
+  };
+
+  const saveIncident = () => {
+    if (!incidentPoint) return;
+
+    const detail = incidentDetail.trim();
+    if (!detail) {
+      notify?.("Escribí un detalle del incidente.", "warning");
+      return;
+    }
+
+    // Guardar incidente en el punto (sin cambiar status de verificación)
+    setPoints((prev) =>
+      prev.map((p) =>
+        p.id === incidentPoint.id
+          ? {
+              ...p,
+              incident: {
+                type: incidentType,
+                detail,
+                time: new Date().toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }),
+              },
+            }
+          : p
+      )
+    );
+
+    notify?.("Incidente registrado en el checkpoint.", "success");
+    addLog?.(
+      "ALERTA",
+      `Incidente en ${incidentPoint.name}: ${incidentType} • ${detail}`
+    );
+
+    setIncidentOpen(false);
+  };
+
+  const saveGeneralNotes = () => {
+    const text = generalNotes.trim();
+    if (!text) {
+      notify?.("Escribí una novedad antes de guardar.", "warning");
+      return;
+    }
+
+    notify?.("Novedad registrada.", "success");
+    addLog?.("RONDA", `Novedades detectadas: ${text}`);
+
+    // opcional: limpiar campo
+    setGeneralNotes("");
+  };
 
   return (
     <div className="flex flex-col h-full bg-slate-50 text-slate-800 animate-fade-in-up">
@@ -3172,22 +3238,62 @@ const GuardRoundsScreen = ({ setScreen, notify, addLog }) => {
                       ? `Verificado a las ${point.time}`
                       : "Pendiente de verificación"}
                   </p>
+                  {point.incident && (
+                    <p className="mt-1 text-[10px] font-bold uppercase text-red-600">
+                      Incidente: {point.incident.type} • {point.incident.time}
+                    </p>
+                  )}
                 </div>
               </div>
-              {point.status === "pending" && (
-                <Button
-                  size="sm"
-                  onClick={() => checkPoint(point.id)}
-                  className="flex gap-2"
+              <div className="flex items-center gap-2">
+                {/* Botón incidente SIEMPRE disponible */}
+                <button
+                  type="button"
+                  onClick={() => openIncidentModal(point)}
+                  className="px-3 py-2 rounded-lg text-xs font-black uppercase border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 hover:text-red-600 hover:border-red-200 transition-colors"
                 >
-                  <MapPin size={16} /> MARCAR POSICIÓN
-                </Button>
-              )}
-              {point.status === "checked" && (
-                <CheckCircle className="text-emerald-500" />
-              )}
+                  Reportar incidente
+                </button>
+
+                {/* Botón marcar posición solo si está pending */}
+                {point.status === "pending" && (
+                  <Button
+                    size="sm"
+                    onClick={() => checkPoint(point.id)}
+                    className="flex gap-2"
+                  >
+                    <MapPin size={16} /> MARCAR POSICIÓN
+                  </Button>
+                )}
+
+                {point.status === "checked" && (
+                  <CheckCircle className="text-emerald-500" />
+                )}
+              </div>
             </div>
           ))}
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 mb-2">
+              Novedades detectadas
+            </h3>
+            <p className="text-xs text-slate-400 mb-3">
+              Use este campo si desea registrar observaciones generales del
+              recorrido.
+            </p>
+
+            <textarea
+              value={generalNotes}
+              onChange={(e) => setGeneralNotes(e.target.value)}
+              placeholder="Ej: luminaria dañada en perímetro, portón secundario con demora, etc."
+              className="w-full min-h-[90px] p-3 rounded-lg border border-slate-200 bg-slate-50 text-slate-800 text-sm outline-none focus:border-orange-500"
+            />
+
+            <div className="flex justify-end mt-3">
+              <Button onClick={saveGeneralNotes} size="sm">
+                Guardar novedad
+              </Button>
+            </div>
+          </div>
         </div>
         <div className="w-full md:w-1/3 bg-slate-800 p-6 rounded-xl text-white shadow-xl h-fit">
           <h3 className="font-bold text-sm uppercase mb-4 flex items-center gap-2">
@@ -3225,6 +3331,79 @@ const GuardRoundsScreen = ({ setScreen, notify, addLog }) => {
           </div>
         </div>
       </div>
+      {incidentOpen && incidentPoint && (
+        <div className="fixed inset-0 z-[120] bg-black/70 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">
+            <div className="p-5 bg-slate-900 text-white flex items-start justify-between">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-red-200">
+                  Reporte de incidente
+                </p>
+                <h3 className="text-xl font-black mt-1">
+                  {incidentPoint.name}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIncidentOpen(false)}
+                className="text-white/70 hover:text-white"
+              >
+                <XCircle size={22} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="text-xs font-black uppercase text-slate-500">
+                  Tipo
+                </label>
+                <div className="flex gap-2 mt-2">
+                  {["NOVEDAD", "INCIDENTE", "RIESGO"].map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setIncidentType(t)}
+                      className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase border transition-colors ${
+                        incidentType === t
+                          ? t === "RIESGO"
+                            ? "bg-red-600 text-white border-red-600"
+                            : "bg-slate-900 text-white border-slate-900"
+                          : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-black uppercase text-slate-500">
+                  Detalle
+                </label>
+                <textarea
+                  value={incidentDetail}
+                  onChange={(e) => setIncidentDetail(e.target.value)}
+                  placeholder="Describa lo observado (ej: portón abierto, sospechoso, daño, etc.)"
+                  className="w-full mt-2 min-h-[110px] p-3 rounded-lg border border-slate-200 bg-slate-50 text-slate-800 text-sm outline-none focus:border-red-400"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" onClick={() => setIncidentOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={saveIncident}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  Guardar incidente
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -3382,17 +3561,6 @@ const GuardEmergencyScreen = ({
           <div className="flex bg-slate-800 p-1 rounded-lg border border-slate-700">
             <button
               type="button"
-              onClick={() => setMode("sim")}
-              className={`px-3 py-2 rounded-md text-xs font-black uppercase transition-all ${
-                mode === "sim"
-                  ? "bg-white text-slate-900 shadow-sm"
-                  : "text-slate-300 hover:text-white"
-              }`}
-            >
-              Simulacro
-            </button>
-            <button
-              type="button"
               onClick={() => setMode("real")}
               className={`px-3 py-2 rounded-md text-xs font-black uppercase transition-all ${
                 mode === "real"
@@ -3401,6 +3569,17 @@ const GuardEmergencyScreen = ({
               }`}
             >
               Real
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("sim")}
+              className={`px-3 py-2 rounded-md text-xs font-black uppercase transition-all ${
+                mode === "sim"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-300 hover:text-white"
+              }`}
+            >
+              Simulacro
             </button>
           </div>
         </div>
@@ -4474,6 +4653,7 @@ const GuardView = ({
           setScreen={setScreen}
           notify={notify}
           addGlobalNotification={addGlobalNotification}
+          addLog={addLog}
         />
       )}
       {screen === "tasks" && (
@@ -5878,14 +6058,20 @@ const ResidentHomeTab = ({
   );
 };
 
-const EmergencyOverlay = ({ notifications, setActiveScreen }) => {
-  // Buscar la notificación de emergencia más reciente y no leída
-  const activeEmergency = notifications.find(
+const EmergencyOverlay = ({ notifications = [], setActiveScreen }) => {
+  // Notificación activa: crítica o alerta, no leída
+  const activeEmergency = (notifications ?? []).find(
     (n) => (n.priority === "critical" || n.type === "alert") && !n.read
   );
+
   const [showMap, setShowMap] = useState(false);
 
+  // ✅ NUEVO: permitir cerrar/ocultar sin marcar como leído
+  const [dismissedId, setDismissedId] = useState(null);
+
+  // Si la alerta actual fue “dismissed”, no mostrar overlay
   if (!activeEmergency) return null;
+  if (dismissedId === activeEmergency.id) return null;
 
   const isRed =
     activeEmergency.color === "red" || activeEmergency.priority === "critical";
@@ -5906,13 +6092,21 @@ const EmergencyOverlay = ({ notifications, setActiveScreen }) => {
               <AlertTriangle size={32} className="text-white" />
             )}
           </div>
-          {/* Botón de cerrar / ver detalles */}
-          <div className="text-right">
+
+          {/* ✅ ACCIONES: VER DETALLES + CERRAR */}
+          <div className="text-right flex flex-col items-end gap-2">
             <button
               onClick={() => setActiveScreen("notifications")}
-              className="text-white/80 hover:text-white text-xs font-bold underline block mb-1"
+              className="text-white/80 hover:text-white text-xs font-bold underline"
             >
               VER DETALLES
+            </button>
+
+            <button
+              onClick={() => setDismissedId(activeEmergency.id)}
+              className="inline-flex items-center justify-center px-3 py-1 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-black uppercase"
+            >
+              CERRAR
             </button>
           </div>
         </div>
@@ -5924,11 +6118,11 @@ const EmergencyOverlay = ({ notifications, setActiveScreen }) => {
           {activeEmergency.message}
         </p>
 
-        {/* Visualización del Mapa si hay coordenadas */}
+        {/* Mapa si hay coordenadas */}
         {activeEmergency.location && (
           <div className="mb-4">
             <button
-              onClick={() => setShowMap(!showMap)}
+              onClick={() => setShowMap((v) => !v)}
               className="w-full bg-white/20 hover:bg-white/30 text-white font-bold py-2 rounded-lg flex items-center justify-center gap-2 mb-2 transition-colors text-sm uppercase"
             >
               {showMap ? <X size={16} /> : <MapPin size={16} />}
@@ -6886,6 +7080,7 @@ const AdminView = ({ onBack, notify, notifications, markAsRead }) => {
 export default function App() {
   const [currentRole, setCurrentRole] = useState(null);
   const [currentUser, setCurrentUser] = useState("");
+
   const normalizeTask = (t) => ({
     id: t.id ?? Date.now(),
     title: t.title ?? t.name ?? "Sin título",
