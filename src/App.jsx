@@ -1541,7 +1541,37 @@ const ShiftReportModal = ({
     else onClose?.();
   };
 
-  const alertsCount = logs.filter((l) => l.type === "ALERTA").length;
+  const normType = (t) =>
+    String(t ?? "")
+      .toUpperCase()
+      .trim();
+
+  const incidentsCount = (logs ?? []).filter(
+    (l) => normType(l.type) === "ALERTA" || normType(l.type) === "INCIDENTE"
+  ).length;
+
+  // Conteos por módulo (desde logs)
+  const packagesCount = (logs ?? []).filter(
+    (l) =>
+      normType(l.type) === "PAQUETERÍA" ||
+      normType(l.type) === "PAQUETERIA" ||
+      normType(l.type) === "PACKAGE"
+  ).length;
+
+  const visitsCount = (logs ?? []).filter(
+    (l) => normType(l.type) === "VISITA" || normType(l.type) === "VISITAS"
+  ).length;
+
+  const suppliersCount = (logs ?? []).filter(
+    (l) =>
+      normType(l.type) === "PROVEEDOR" ||
+      normType(l.type) === "PROVEEDORES" ||
+      normType(l.type) === "SUPPLIER"
+  ).length;
+
+  const lprCount = (logs ?? []).filter(
+    (l) => normType(l.type) === "LPR" || normType(l.type) === "AUTO-LPR"
+  ).length;
 
   return (
     <div className="fixed inset-0 z-[200] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in-up">
@@ -1566,7 +1596,7 @@ const ShiftReportModal = ({
         <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
           {/* ✅ 0) Resumen rápido (stats) */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-            {/* Tile 1 */}
+            {/* Tile 1 | TAREAS COMPLETADAS */}
             <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center">
               <CheckCircle className="w-6 h-6 text-emerald-600 mx-auto mb-2" />
               <div className="text-2xl font-black text-emerald-700">
@@ -1577,7 +1607,7 @@ const ShiftReportModal = ({
               </div>
             </div>
 
-            {/* Tile 2 */}
+            {/* Tile 2 | TAREAS PENDIENTES*/}
             <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-center">
               <ClipboardList className="w-6 h-6 text-orange-600 mx-auto mb-2" />
               <div className="text-2xl font-black text-orange-700">
@@ -1588,7 +1618,7 @@ const ShiftReportModal = ({
               </div>
             </div>
 
-            {/* Tile 3 */}
+            {/* Tile 3 | TAREAS EN CURSO*/}
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
               <PlayCircle className="w-6 h-6 text-blue-600 mx-auto mb-2" />
               <div className="text-2xl font-black text-blue-700">
@@ -1597,15 +1627,54 @@ const ShiftReportModal = ({
               <div className="text-xs text-blue-600 font-medium">En curso</div>
             </div>
 
-            {/* Tile 4 */}
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
-              <AlertTriangle className="w-6 h-6 text-slate-600 mx-auto mb-2" />
-              <div className="text-2xl font-black text-slate-700">
-                {alertsCount}
+            {/* Tile 4 | ALERTAS*/}
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
+              <AlertTriangle className="w-6 h-6 text-red-600 mx-auto mb-2" />
+              <div className="text-2xl font-black text-red-700">
+                {incidentsCount}
               </div>
-              <div className="text-xs text-slate-600 font-medium">
-                Alertas del turno
+              <div className="text-xs text-red-600 font-medium">Incidentes</div>
+            </div>
+            {/* Tile 5 | Paquetes */}
+            <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-center">
+              <Package className="w-6 h-6 text-orange-600 mx-auto mb-2" />
+              <div className="text-2xl font-black text-orange-700">
+                {packagesCount}
               </div>
+              <div className="text-xs text-orange-600 font-medium">
+                Paquetes recibidos
+              </div>
+            </div>
+
+            {/* Tile 6 |Visitas */}
+            <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 text-center">
+              <UserPlus className="w-6 h-6 text-purple-600 mx-auto mb-2" />
+              <div className="text-2xl font-black text-purple-700">
+                {visitsCount}
+              </div>
+              <div className="text-xs text-purple-600 font-medium">
+                Visitas registradas
+              </div>
+            </div>
+
+            {/* Tile 7 |Proveedores */}
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
+              <Truck className="w-6 h-6 text-blue-600 mx-auto mb-2" />
+              <div className="text-2xl font-black text-blue-700">
+                {suppliersCount}
+              </div>
+              <div className="text-xs text-blue-600 font-medium">
+                Proveedores
+              </div>
+            </div>
+
+            {/* Tile 8 |Auto-LPR */}
+            <div className="bg-purple-50 border border-green-200 rounded-xl p-4 text-center">
+              <Truck className="w-6 h-6 text-green-600 mx-auto mb-2" />
+              <div className="text-2xl font-black text-green-700">
+                {lprCount}
+              </div>
+              <div className="text-xs text-green-600 font-medium">Auto-LPR</div>
             </div>
           </div>
 
@@ -3172,43 +3241,122 @@ const GuardEmergencyScreen = ({
   const [selectedEmergency, setSelectedEmergency] = useState(null);
   const [showEvacuationConfirm, setShowEvacuationConfirm] = useState(false);
   const [evacuationActive, setEvacuationActive] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingSelection, setPendingSelection] = useState(null); // { key, data }
+  const [mode, setMode] = useState("sim"); // "sim" | "real"
+  const [evacOverlayOpen, setEvacOverlayOpen] = useState(false);
 
   const handleEmergencySelect = (key, data) => {
+    setPendingSelection({ key, data });
+    setConfirmOpen(true);
+  };
+
+  const confirmEmergencySelection = () => {
+    if (!pendingSelection?.data) return;
+
+    const { key, data } = pendingSelection;
+
+    // 1) Setear emergencia seleccionada (esto habilita el panel derecho)
     setSelectedEmergency({ ...data, key });
-    // Notificación inmediata tipo popup al sistema
-    addGlobalNotification({
-      type: "alert",
-      title: `ALERTA: ${data.label}`,
-      message: `El Guardia ha reportado: ${data.label}. Siga instrucciones.`,
-      priority: data.color === "red" ? "critical" : "high",
-      color: data.color,
-    });
-    notify(
-      `Alerta de ${data.label} enviada a la comunidad.`,
-      data.color === "red" ? "error" : "warning"
+
+    // 2) Registrar en bitácora siempre
+    addLog?.(
+      "ALERTA",
+      `${mode === "sim" ? "[SIMULACRO] " : ""}Emergencia confirmada: ${
+        data.label
+      }`
     );
-    addLog?.("ALERTA", `Emergencia reportada: ${data.label}`);
+
+    // 3) En modo REAL, enviamos notificación global. En SIMULACRO, no.
+    if (mode === "real") {
+      addGlobalNotification?.({
+        type: "alert",
+        title: `ALERTA: ${data.label}`,
+        message: `El Guardia ha reportado: ${data.label}. Siga instrucciones.`,
+        priority: data.color === "red" ? "critical" : "high",
+        color: data.color,
+      });
+
+      notify?.(
+        `Alerta de ${data.label} enviada a la comunidad.`,
+        data.color === "red" ? "error" : "warning"
+      );
+    } else {
+      notify?.(
+        `SIMULACRO: ${data.label} (sin notificación a residentes)`,
+        "info"
+      );
+    }
+
+    // 4) Cerrar confirmación
+    setConfirmOpen(false);
+    setPendingSelection(null);
+  };
+
+  const cancelEmergencySelection = () => {
+    setConfirmOpen(false);
+    setPendingSelection(null);
   };
 
   const triggerEvacuation = () => {
     setEvacuationActive(true);
+    setEvacuationActive(true);
+    setShowEvacuationConfirm(false);
+    setEvacOverlayOpen(true); // ✅ ABRIR OVERLAY
+
     setShowEvacuationConfirm(false);
 
     // Alerta CRÍTICA de Evacuación
-    addGlobalNotification({
-      type: "evacuation",
-      title: "¡EVACUACIÓN INICIADA!",
-      message: `EMERGENCIA: ${selectedEmergency.label}. PROCEDA A LOS PUNTOS DE ENCUENTRO INMEDIATAMENTE.`,
-      priority: "critical",
-      color: "red",
-    });
-    notify("PROTOCOLO DE EVACUACIÓN ACTIVADO", "error");
+    if (mode === "real") {
+      addGlobalNotification?.({
+        type: "evacuation",
+        title: "¡EVACUACIÓN INICIADA!",
+        message: `EMERGENCIA: ${selectedEmergency.label}. PROCEDA A LOS PUNTOS DE ENCUENTRO INMEDIATAMENTE.`,
+        priority: "critical",
+        color: "red",
+      });
+      notify?.("PROTOCOLO DE EVACUACIÓN ACTIVADO", "error");
+    } else {
+      notify?.(
+        "SIMULACRO: Protocolo de evacuación iniciado (sin residentes)",
+        "info"
+      );
+    }
+
+    addLog?.(
+      "ALERTA",
+      `${mode === "sim" ? "[SIMULACRO] " : ""}Evacuación iniciada por: ${
+        selectedEmergency.label
+      }`
+    );
+  };
+  const closeEvacOverlay = () => {
+    setEvacOverlayOpen(false);
+  };
+
+  const endEvacuation = () => {
+    // Si querés que "Cerrar alerta" también apague estado de evacuación:
+    setEvacuationActive(false);
+    setEvacOverlayOpen(false);
+
+    addLog?.(
+      "ALERTA",
+      `Evacuación finalizada por guardia (${selectedEmergency?.label ?? "s/d"})`
+    );
+
+    // Si en modo REAL avisás a residentes, podés emitir un cierre (opcional):
+    // addGlobalNotification?.({
+    //   type: "alert",
+    //   title: "Fin de evacuación",
+    //   message: `Se dio por finalizada la evacuación por: ${selectedEmergency?.label}`,
+    //   priority: "normal",
+    // });
   };
 
   return (
     <div className="flex flex-col h-full bg-slate-900 text-white relative animate-fade-in-up">
       {/* Header */}
-      <div className="p-4 border-b border-slate-700 flex items-center gap-4 shadow-sm z-10 bg-slate-900">
+      <div className="p-4 border-b border-slate-700 flex items-center justify-between gap-4 shadow-sm z-10 bg-slate-900">
         <Button
           variant="secondary"
           size="sm"
@@ -3225,6 +3373,36 @@ const GuardEmergencyScreen = ({
           <p className="text-xs text-slate-400 font-bold uppercase">
             Panel de Control Crítico
           </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+            Modo
+          </span>
+
+          <div className="flex bg-slate-800 p-1 rounded-lg border border-slate-700">
+            <button
+              type="button"
+              onClick={() => setMode("sim")}
+              className={`px-3 py-2 rounded-md text-xs font-black uppercase transition-all ${
+                mode === "sim"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-300 hover:text-white"
+              }`}
+            >
+              Simulacro
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("real")}
+              className={`px-3 py-2 rounded-md text-xs font-black uppercase transition-all ${
+                mode === "real"
+                  ? "bg-red-600 text-white shadow-sm"
+                  : "text-slate-300 hover:text-white"
+              }`}
+            >
+              Real
+            </button>
+          </div>
         </div>
       </div>
 
@@ -3379,6 +3557,59 @@ const GuardEmergencyScreen = ({
       </div>
 
       {/* MODAL DE CONFIRMACIÓN (DOBLE CONTROL) */}
+      {/* MODAL CONFIRMACIÓN SELECCIÓN DE EMERGENCIA */}
+      {confirmOpen && pendingSelection?.data && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in-up">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-md w-full shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-black uppercase tracking-widest text-slate-400">
+                  Confirmación
+                </p>
+                <h3 className="text-2xl font-black text-white mt-1">
+                  {pendingSelection.data.label}
+                </h3>
+                <p className="text-sm text-slate-300 mt-2">
+                  Vas a{" "}
+                  {mode === "real"
+                    ? "ENVIAR una alerta a residentes"
+                    : "INICIAR un simulacro (sin residentes)"}
+                  . Confirmá para continuar.
+                </p>
+              </div>
+              <button
+                onClick={cancelEmergencySelection}
+                className="text-slate-400 hover:text-white"
+                type="button"
+              >
+                <XCircle size={22} />
+              </button>
+            </div>
+
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <button
+                onClick={cancelEmergencySelection}
+                className="py-3 rounded-xl bg-slate-800 text-white font-bold hover:bg-slate-700 transition-colors uppercase text-sm"
+                type="button"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmEmergencySelection}
+                className={`py-3 rounded-xl font-black uppercase tracking-widest text-sm transition-colors ${
+                  pendingSelection.data.color === "red"
+                    ? "bg-red-600 hover:bg-red-700 text-white"
+                    : "bg-orange-600 hover:bg-orange-700 text-white"
+                }`}
+                type="button"
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showEvacuationConfirm && (
         <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in-up">
           <div className="bg-slate-900 border-4 border-red-600 rounded-2xl p-8 max-w-md w-full shadow-2xl relative overflow-hidden">
@@ -3413,6 +3644,168 @@ const GuardEmergencyScreen = ({
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+      {/* OVERLAY EVACUACIÓN (titilante) */}
+      {evacOverlayOpen && selectedEmergency && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+          {/* Fondo titilante según color */}
+          <div
+            className={`absolute inset-0 ${
+              selectedEmergency.color === "red"
+                ? "bg-red-600/40"
+                : "bg-orange-500/35"
+            } animate-pulse`}
+          />
+
+          {/* Oscurecer + blur */}
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+
+          {/* Contenedor */}
+          <div className="relative z-10 w-full max-w-3xl rounded-2xl overflow-hidden shadow-2xl border-4">
+            {/* Barra superior */}
+            <div
+              className={`p-6 flex items-start justify-between gap-4 ${
+                selectedEmergency.color === "red"
+                  ? "bg-red-700"
+                  : "bg-orange-600"
+              }`}
+            >
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-white/80">
+                  EVACUACIÓN INICIADA
+                </p>
+                <h2 className="text-2xl md:text-3xl font-black text-white leading-tight mt-1">
+                  {selectedEmergency.label}
+                </h2>
+                <p className="text-sm text-white/90 font-bold mt-2">
+                  Protocolo activo • Siga los pasos del procedimiento.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={closeEvacOverlay}
+                className="text-white/80 hover:text-white"
+                title="Minimizar overlay"
+              >
+                <XCircle size={26} />
+              </button>
+            </div>
+
+            {/* Cuerpo */}
+            <div className="bg-white p-6 md:p-8">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Procedimiento */}
+                <div className="md:col-span-2">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-xs font-black uppercase tracking-widest text-slate-500">
+                      Procedimiento inmediato
+                    </h3>
+                    <span
+                      className={`text-[10px] font-black uppercase px-2 py-1 rounded ${
+                        selectedEmergency.color === "red"
+                          ? "bg-red-100 text-red-700"
+                          : "bg-orange-100 text-orange-700"
+                      }`}
+                    >
+                      {selectedEmergency.color === "red"
+                        ? "CRÍTICO"
+                        : "ALTA PRIORIDAD"}
+                    </span>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+                    <ol className="list-decimal pl-5 space-y-2 text-sm text-slate-800 font-medium">
+                      {(selectedEmergency.steps ?? []).length > 0 ? (
+                        selectedEmergency.steps.map((s, i) => (
+                          <li key={i}>{s}</li>
+                        ))
+                      ) : (
+                        <li>
+                          (No hay pasos cargados en{" "}
+                          <code>selectedEmergency.steps</code>)
+                        </li>
+                      )}
+                    </ol>
+                  </div>
+
+                  {/* Llamar 911 si corresponde */}
+                  {selectedEmergency.call911 && (
+                    <div className="mt-4">
+                      <a
+                        href="tel:911"
+                        onClick={() =>
+                          addLog?.(
+                            "ALERTA",
+                            `Llamada sugerida a 911 (overlay) por: ${selectedEmergency.label}`
+                          )
+                        }
+                        className={`w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl font-black uppercase tracking-widest border-2 ${
+                          selectedEmergency.color === "red"
+                            ? "bg-white text-red-700 border-red-500 hover:bg-red-50"
+                            : "bg-white text-orange-700 border-orange-500 hover:bg-orange-50"
+                        }`}
+                      >
+                        <PhoneCall size={18} />
+                        LLAMAR 911
+                      </a>
+                    </div>
+                  )}
+                </div>
+
+                {/* Acciones */}
+                <div className="md:col-span-1">
+                  <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 mb-3">
+                    Acciones
+                  </h3>
+
+                  <div className="space-y-3">
+                    <button
+                      type="button"
+                      onClick={closeEvacOverlay}
+                      className="w-full py-3 rounded-xl bg-slate-900 text-white font-black uppercase tracking-widest hover:bg-slate-800 transition-colors"
+                    >
+                      Cerrar Ventana
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={endEvacuation}
+                      className={`w-full py-3 rounded-xl font-black uppercase tracking-widest transition-colors ${
+                        selectedEmergency.color === "red"
+                          ? "bg-red-600 hover:bg-red-700 text-white"
+                          : "bg-orange-600 hover:bg-orange-700 text-white"
+                      }`}
+                    >
+                      FIN DE EMERGENCIA
+                    </button>
+
+                    <div className="rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-600">
+                      <p className="font-bold text-slate-800 mb-1">
+                        Nota operativa
+                      </p>
+                      <p>
+                        “Cerrar alerta” finaliza el estado de evacuación en el
+                        panel del guardia. Si querés que solo cierre este
+                        overlay, cambiá el handler por{" "}
+                        <code>closeEvacOverlay()</code>.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Pie (banda) */}
+            <div
+              className={`h-2 ${
+                selectedEmergency.color === "red"
+                  ? "bg-red-600"
+                  : "bg-orange-500"
+              } animate-pulse`}
+            />
           </div>
         </div>
       )}
