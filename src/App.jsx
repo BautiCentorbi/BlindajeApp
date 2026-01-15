@@ -1334,6 +1334,112 @@ const ReportsModule = ({ notify }) => {
 };
 
 // --- MÓDULOS DE GUARDIA ---
+const LiveActivityDrawer = ({
+  logs = [],
+  onClear,
+  title = "REGISTRO DE ACTIVIDAD EN VIVO",
+}) => {
+  const [open, setOpen] = useState(false);
+
+  // Solo los últimos N para no hacer infinito el DOM
+  const visible = logs.slice(0, 40);
+
+  return (
+    <div className="w-full">
+      <div className="w-full">
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden">
+          {/* Header (siempre visible) */}
+          <button
+            onClick={() => setOpen((v) => !v)}
+            className="w-full px-4 py-3 bg-orange-50 border-b border-orange-100 flex items-center justify-between"
+          >
+            <div className="flex items-center gap-2">
+              <Activity size={16} className="text-orange-600" />
+              <span className="text-xs font-black text-orange-600 uppercase tracking-widest">
+                {title}
+              </span>
+              <span className="text-[10px] text-emerald-700 font-bold bg-emerald-100 px-2 py-1 rounded-full">
+                ● ONLINE
+              </span>
+              <span className="text-[10px] text-slate-400 font-mono">
+                ({logs.length})
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {typeof onClear === "function" && (
+                <span
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onClear();
+                  }}
+                  className="inline-flex items-center gap-1 text-[10px] font-black uppercase px-2 py-1 rounded bg-white border border-slate-200 text-slate-500 hover:text-red-600 hover:border-red-200"
+                  role="button"
+                >
+                  <Trash2 size={14} /> Limpiar
+                </span>
+              )}
+
+              {open ? (
+                <ChevronDown className="w-5 h-5 text-slate-500" />
+              ) : (
+                <ChevronUp className="w-5 h-5 text-slate-500" />
+              )}
+            </div>
+          </button>
+
+          {/* Body (colapsable) */}
+          <div
+            className={`transition-all duration-300 ease-out ${
+              open ? "max-h-[45vh]" : "max-h-0"
+            } overflow-hidden`}
+          >
+            <div className="p-4 bg-white">
+              {visible.length === 0 ? (
+                <div className="text-slate-400 text-sm font-bold text-center py-6">
+                  Sin eventos aún.
+                </div>
+              ) : (
+                <div className="space-y-2 font-mono text-xs">
+                  {visible.map((log, idx) => (
+                    <div
+                      key={idx}
+                      className="flex gap-3 p-2 rounded hover:bg-slate-50 border-l-4"
+                      style={{
+                        borderLeftColor:
+                          log.type === "ALERTA"
+                            ? "rgb(220 38 38)"
+                            : log.type === "LPR"
+                            ? "rgb(37 99 235)"
+                            : log.type === "PAQUETERÍA"
+                            ? "rgb(249 115 22)"
+                            : "rgb(16 185 129)",
+                      }}
+                    >
+                      <span className="text-slate-400 font-bold min-w-[54px]">
+                        [{log.time ?? "--:--"}]
+                      </span>
+                      <span className="text-[10px] font-black uppercase text-slate-500 min-w-[90px]">
+                        {log.type ?? "EVENTO"}
+                      </span>
+                      <span className="text-slate-700 flex-1">
+                        {log.detail ?? ""}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="pt-3 text-[10px] text-slate-400 font-mono">
+                Mostrando últimos {visible.length} eventos.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // --- COMPONENTE: REPORTE DE CIERRE DE TURNO ---
 const ShiftReportModal = ({
@@ -3605,6 +3711,8 @@ const GuardDashboard = ({
   openShiftReport,
   notifications,
   addLog,
+  shiftLogs,
+  onClearLogs,
 }) => {
   // Calcular notificaciones no leídas
   const unreadCount = notifications
@@ -3716,94 +3824,100 @@ const GuardDashboard = ({
           </Button>
         </div>
       </div>
-      <div className="p-6 grid grid-cols-2 md:grid-cols-3 gap-6 flex-1 overflow-y-auto bg-slate-50">
-        <button
-          onClick={() => setScreen("supplier")}
-          className="group bg-white hover:bg-orange-50 border-2 border-slate-200 hover:border-orange-500 p-6 rounded-2xl flex flex-col items-center gap-4 transition-all shadow-sm hover:shadow-md"
-        >
-          <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center group-hover:bg-orange-100 transition-colors">
-            <Truck className="w-8 h-8 text-slate-600 group-hover:text-orange-600" />
-          </div>
-          <span className="font-black text-lg text-slate-700 group-hover:text-orange-700 uppercase tracking-tight">
-            Ingreso Proveedores
-          </span>
-        </button>
-        <button
-          onClick={() => setScreen("package")}
-          className="group bg-white hover:bg-emerald-50 border-2 border-slate-200 hover:border-emerald-500 p-6 rounded-2xl flex flex-col items-center gap-4 transition-all shadow-sm hover:shadow-md"
-        >
-          <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center group-hover:bg-emerald-100 transition-colors">
-            <Package className="w-8 h-8 text-slate-600 group-hover:text-emerald-600" />
-          </div>
-          <span className="font-black text-lg text-slate-700 group-hover:text-emerald-700 uppercase tracking-tight">
-            Paquetería
-          </span>
-        </button>
-        <button
-          onClick={() => setScreen("visits")}
-          className="group bg-white hover:bg-purple-50 border-2 border-slate-200 hover:border-purple-500 p-6 rounded-2xl flex flex-col items-center gap-4 transition-all shadow-sm hover:shadow-md"
-        >
-          <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center group-hover:bg-purple-100 transition-colors">
-            <UserPlus className="w-8 h-8 text-slate-600 group-hover:text-purple-600" />
-          </div>
-          <span className="font-black text-lg text-slate-700 group-hover:text-purple-700 uppercase tracking-tight">
-            Control Visitas
-          </span>
-        </button>
-        <button
-          onClick={() => setScreen("rounds")}
-          className="group bg-white hover:bg-blue-50 border-2 border-slate-200 hover:border-blue-500 p-6 rounded-2xl flex flex-col items-center gap-4 transition-all shadow-sm hover:shadow-md"
-        >
-          <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
-            <MapPin className="w-8 h-8 text-slate-600 group-hover:text-blue-600" />
-          </div>
-          <span className="font-black text-lg text-slate-700 group-hover:text-blue-700 uppercase tracking-tight">
-            Rondas Activas
-          </span>
-        </button>
-        <button
-          onClick={() => setScreen("lpr")}
-          className="group bg-slate-900 hover:bg-slate-800 border-2 border-slate-800 hover:border-slate-700 p-6 rounded-2xl flex flex-col items-center gap-4 transition-all shadow-lg hover:shadow-xl"
-        >
-          <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center group-hover:bg-slate-700 transition-colors border border-slate-700">
-            <ScanLine className="w-8 h-8 text-emerald-400 group-hover:text-emerald-300" />
-          </div>
-          <span className="font-black text-lg text-white group-hover:text-slate-100 uppercase tracking-tight">
-            Ingreso LPR / Facial
-          </span>
-        </button>
-
-        {/* NUEVO BOTÓN: TAREAS PENDIENTES */}
-        <button
-          onClick={() => setScreen("tasks")}
-          className="group bg-white hover:bg-yellow-50 border-2 border-slate-200 hover:border-yellow-500 p-6 rounded-2xl flex flex-col items-center gap-4 transition-all shadow-sm hover:shadow-md relative"
-        >
-          {pendingTasks > 0 && (
-            <div className="absolute top-4 right-4 bg-red-500 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold border-2 border-white shadow-sm animate-pulse">
-              {pendingTasks}
+      <div className="flex-1 overflow-y-auto bg-slate-50">
+        <div className="p-6 grid grid-cols-2 md:grid-cols-3 gap-6">
+          <button
+            onClick={() => setScreen("supplier")}
+            className="group bg-white hover:bg-orange-50 border-2 border-slate-200 hover:border-orange-500 p-6 rounded-2xl flex flex-col items-center gap-4 transition-all shadow-sm hover:shadow-md"
+          >
+            <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center group-hover:bg-orange-100 transition-colors">
+              <Truck className="w-8 h-8 text-slate-600 group-hover:text-orange-600" />
             </div>
-          )}
-          <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center group-hover:bg-yellow-100 transition-colors">
-            <ClipboardList className="w-8 h-8 text-slate-600 group-hover:text-yellow-600" />
-          </div>
-          <span className="font-black text-lg text-slate-700 group-hover:text-yellow-700 uppercase tracking-tight">
-            Tareas Pendientes
-          </span>
-        </button>
+            <span className="font-black text-lg text-slate-700 group-hover:text-orange-700 uppercase tracking-tight">
+              Ingreso Proveedores
+            </span>
+          </button>
+          <button
+            onClick={() => setScreen("package")}
+            className="group bg-white hover:bg-emerald-50 border-2 border-slate-200 hover:border-emerald-500 p-6 rounded-2xl flex flex-col items-center gap-4 transition-all shadow-sm hover:shadow-md"
+          >
+            <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center group-hover:bg-emerald-100 transition-colors">
+              <Package className="w-8 h-8 text-slate-600 group-hover:text-emerald-600" />
+            </div>
+            <span className="font-black text-lg text-slate-700 group-hover:text-emerald-700 uppercase tracking-tight">
+              Paquetería
+            </span>
+          </button>
+          <button
+            onClick={() => setScreen("visits")}
+            className="group bg-white hover:bg-purple-50 border-2 border-slate-200 hover:border-purple-500 p-6 rounded-2xl flex flex-col items-center gap-4 transition-all shadow-sm hover:shadow-md"
+          >
+            <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center group-hover:bg-purple-100 transition-colors">
+              <UserPlus className="w-8 h-8 text-slate-600 group-hover:text-purple-600" />
+            </div>
+            <span className="font-black text-lg text-slate-700 group-hover:text-purple-700 uppercase tracking-tight">
+              Control Visitas
+            </span>
+          </button>
+          <button
+            onClick={() => setScreen("rounds")}
+            className="group bg-white hover:bg-blue-50 border-2 border-slate-200 hover:border-blue-500 p-6 rounded-2xl flex flex-col items-center gap-4 transition-all shadow-sm hover:shadow-md"
+          >
+            <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
+              <MapPin className="w-8 h-8 text-slate-600 group-hover:text-blue-600" />
+            </div>
+            <span className="font-black text-lg text-slate-700 group-hover:text-blue-700 uppercase tracking-tight">
+              Rondas Activas
+            </span>
+          </button>
+          <button
+            onClick={() => setScreen("lpr")}
+            className="group bg-slate-900 hover:bg-slate-800 border-2 border-slate-800 hover:border-slate-700 p-6 rounded-2xl flex flex-col items-center gap-4 transition-all shadow-lg hover:shadow-xl"
+          >
+            <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center group-hover:bg-slate-700 transition-colors border border-slate-700">
+              <ScanLine className="w-8 h-8 text-emerald-400 group-hover:text-emerald-300" />
+            </div>
+            <span className="font-black text-lg text-white group-hover:text-slate-100 uppercase tracking-tight">
+              Ingreso LPR / Facial
+            </span>
+          </button>
 
-        {/* BOTÓN DE EMERGENCIAS */}
-        <button
-          onClick={() => setScreen("emergency")}
-          className="group bg-red-600 hover:bg-red-700 border-2 border-red-500 hover:border-red-400 p-6 rounded-2xl flex flex-col items-center gap-4 transition-all shadow-lg hover:shadow-red-200 col-span-2 md:col-span-1"
-        >
-          <div className="w-16 h-16 rounded-full bg-red-500/30 border border-red-400/50 flex items-center justify-center group-hover:bg-red-500 transition-colors">
-            <Siren className="w-8 h-8 text-white animate-pulse" />
-          </div>
-          <span className="font-black text-lg text-white uppercase tracking-tight">
-            Emergencias
-          </span>
-        </button>
+          {/* NUEVO BOTÓN: TAREAS PENDIENTES */}
+          <button
+            onClick={() => setScreen("tasks")}
+            className="group bg-white hover:bg-yellow-50 border-2 border-slate-200 hover:border-yellow-500 p-6 rounded-2xl flex flex-col items-center gap-4 transition-all shadow-sm hover:shadow-md relative"
+          >
+            {pendingTasks > 0 && (
+              <div className="absolute top-4 right-4 bg-red-500 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold border-2 border-white shadow-sm animate-pulse">
+                {pendingTasks}
+              </div>
+            )}
+            <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center group-hover:bg-yellow-100 transition-colors">
+              <ClipboardList className="w-8 h-8 text-slate-600 group-hover:text-yellow-600" />
+            </div>
+            <span className="font-black text-lg text-slate-700 group-hover:text-yellow-700 uppercase tracking-tight">
+              Tareas Pendientes
+            </span>
+          </button>
+
+          {/* BOTÓN DE EMERGENCIAS */}
+          <button
+            onClick={() => setScreen("emergency")}
+            className="group bg-red-600 hover:bg-red-700 border-2 border-red-500 hover:border-red-400 p-6 rounded-2xl flex flex-col items-center gap-4 transition-all shadow-lg hover:shadow-red-200 col-span-2 md:col-span-1"
+          >
+            <div className="w-16 h-16 rounded-full bg-red-500/30 border border-red-400/50 flex items-center justify-center group-hover:bg-red-500 transition-colors">
+              <Siren className="w-8 h-8 text-white animate-pulse" />
+            </div>
+            <span className="font-black text-lg text-white uppercase tracking-tight">
+              Emergencias
+            </span>
+          </button>
+        </div>
+        <div className="px-6 pb-6">
+          <LiveActivityDrawer logs={shiftLogs} onClear={onClearLogs} />
+        </div>
       </div>
+
       {autoEntryOpen && autoEntry && (
         <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">
@@ -3921,6 +4035,8 @@ const GuardView = ({
   setGuardTasks,
   addLog,
   openShiftReport, // <-- NUEVO
+  shiftLogs,
+  setShiftLogs,
 }) => {
   const [screen, setScreen] = useState("dashboard");
   const [lprPopupData, setLprPopupData] = useState(null);
@@ -3949,6 +4065,8 @@ const GuardView = ({
           openShiftReport={openShiftReport} // <-- PASO DIRECTO
           notifications={notifications}
           addLog={addLog}
+          shiftLogs={shiftLogs}
+          onClearLogs={() => setShiftLogs([])}
         />
       )}
       {screen === "supplier" && (
@@ -4207,7 +4325,6 @@ const GuardVisitsScreen = ({
           >
             VISITAS AUTORIZADAS (QR)
           </button>
-          
 
           <button
             onClick={() => setVisitMode("active")}
@@ -6438,113 +6555,6 @@ export default function App() {
     );
   };
 
-  const LiveActivityDrawer = ({
-    logs = [],
-    onClear,
-    title = "REGISTRO DE ACTIVIDAD EN VIVO",
-  }) => {
-    const [open, setOpen] = useState(false);
-
-    // Solo los últimos N para no hacer infinito el DOM
-    const visible = logs.slice(0, 40);
-
-    return (
-      <div className="fixed bottom-0 left-0 right-0 z-[150] pointer-events-none">
-        <div className="max-w-6xl mx-auto px-4 pb-4 pointer-events-auto">
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden">
-            {/* Header (siempre visible) */}
-            <button
-              onClick={() => setOpen((v) => !v)}
-              className="w-full px-4 py-3 bg-orange-50 border-b border-orange-100 flex items-center justify-between"
-            >
-              <div className="flex items-center gap-2">
-                <Activity size={16} className="text-orange-600" />
-                <span className="text-xs font-black text-orange-600 uppercase tracking-widest">
-                  {title}
-                </span>
-                <span className="text-[10px] text-emerald-700 font-bold bg-emerald-100 px-2 py-1 rounded-full">
-                  ● ONLINE
-                </span>
-                <span className="text-[10px] text-slate-400 font-mono">
-                  ({logs.length})
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                {typeof onClear === "function" && (
-                  <span
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      onClear();
-                    }}
-                    className="inline-flex items-center gap-1 text-[10px] font-black uppercase px-2 py-1 rounded bg-white border border-slate-200 text-slate-500 hover:text-red-600 hover:border-red-200"
-                    role="button"
-                  >
-                    <Trash2 size={14} /> Limpiar
-                  </span>
-                )}
-
-                {open ? (
-                  <ChevronDown className="w-5 h-5 text-slate-500" />
-                ) : (
-                  <ChevronUp className="w-5 h-5 text-slate-500" />
-                )}
-              </div>
-            </button>
-
-            {/* Body (colapsable) */}
-            <div
-              className={`transition-all duration-300 ease-out ${
-                open ? "max-h-[45vh]" : "max-h-0"
-              } overflow-hidden`}
-            >
-              <div className="p-4 bg-white">
-                {visible.length === 0 ? (
-                  <div className="text-slate-400 text-sm font-bold text-center py-6">
-                    Sin eventos aún.
-                  </div>
-                ) : (
-                  <div className="space-y-2 font-mono text-xs">
-                    {visible.map((log, idx) => (
-                      <div
-                        key={idx}
-                        className="flex gap-3 p-2 rounded hover:bg-slate-50 border-l-4"
-                        style={{
-                          borderLeftColor:
-                            log.type === "ALERTA"
-                              ? "rgb(220 38 38)"
-                              : log.type === "LPR"
-                              ? "rgb(37 99 235)"
-                              : log.type === "PAQUETERÍA"
-                              ? "rgb(249 115 22)"
-                              : "rgb(16 185 129)",
-                        }}
-                      >
-                        <span className="text-slate-400 font-bold min-w-[54px]">
-                          [{log.time ?? "--:--"}]
-                        </span>
-                        <span className="text-[10px] font-black uppercase text-slate-500 min-w-[90px]">
-                          {log.type ?? "EVENTO"}
-                        </span>
-                        <span className="text-slate-700 flex-1">
-                          {log.detail ?? ""}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <div className="pt-3 text-[10px] text-slate-400 font-mono">
-                  Mostrando últimos {visible.length} eventos.
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   const renderContent = () => {
     if (currentRole && !isAuthenticated)
       return (
@@ -6571,8 +6581,9 @@ export default function App() {
               addLog={addLog}
               guardTasks={guardTasks}
               setGuardTasks={setGuardTasks}
-              shiftLogs={shiftLogs}
               openShiftReport={() => setShowShiftReport(true)}
+              shiftLogs={shiftLogs}
+              setShiftLogs={setShiftLogs}
             />
           )}
 
@@ -6719,7 +6730,7 @@ export default function App() {
           onClose={() => setShowShiftReport(false)}
           onConfirm={(report) => {
             // 1) Guardar reporte (mock / futuro backend)
-            setShiftLogs((prev) => [...prev, report]);
+            // setShiftLogs((prev) => [...prev, report]);
 
             // 1) (futuro backend / storage externo)
             // saveShiftReport(report)
@@ -6742,9 +6753,6 @@ export default function App() {
           tasks={guardTasks}
           addGlobalNotification={addGlobalNotification}
         />
-      )}
-      {isAuthenticated && currentRole === "guard" && (
-        <LiveActivityDrawer logs={shiftLogs} onClear={() => setShiftLogs([])} />
       )}
     </div>
   );
