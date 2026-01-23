@@ -700,7 +700,9 @@ const ReportsModuleV2 = ({
         })
       );
 
-      const csv = [header.join(","), ...body.map((r) => r.join(","))].join("\n");
+      const csv = [header.join(","), ...body.map((r) => r.join(","))].join(
+        "\n"
+      );
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
 
@@ -725,20 +727,34 @@ const ReportsModuleV2 = ({
       const total = rows.length;
 
       const ingresaron = rows.filter((v) =>
-        String(v.status ?? "").toLowerCase().includes("ingres")
+        String(v.status ?? "")
+          .toLowerCase()
+          .includes("ingres")
       ).length;
 
       const salieron = rows.filter((v) =>
-        String(v.status ?? "").toLowerCase().includes("sal")
+        String(v.status ?? "")
+          .toLowerCase()
+          .includes("sal")
       ).length;
 
       const avgMin = 0; // si no tenés duración real aún, lo dejamos en 0
 
       const stats = [
         { label: "Total visitas", value: total, tone: "blue", icon: Users },
-        { label: "Ingresos", value: ingresaron, tone: "emerald", icon: Download },
+        {
+          label: "Ingresos",
+          value: ingresaron,
+          tone: "emerald",
+          icon: Download,
+        },
         { label: "Salidas", value: salieron, tone: "orange", icon: Upload },
-        { label: "Minutos promedio", value: avgMin, tone: "purple", icon: Clock },
+        {
+          label: "Minutos promedio",
+          value: avgMin,
+          tone: "purple",
+          icon: Clock,
+        },
       ];
 
       const columns = [
@@ -749,7 +765,13 @@ const ReportsModuleV2 = ({
         { key: "plate", label: "PATENTE", get: (v) => v.plate ?? "-" },
       ];
 
-      return { title: "Reportes • Visitas", stats, rows, columns, filename: "reporte-visitas.csv" };
+      return {
+        title: "Reportes • Visitas",
+        stats,
+        rows,
+        columns,
+        filename: "reporte-visitas.csv",
+      };
     }
 
     if (tab === "incidents") {
@@ -757,16 +779,36 @@ const ReportsModuleV2 = ({
       const rows = (incidents ?? []).filter((i) => isWithin(i.date));
       const total = rows.length;
 
-      const low = rows.filter((i) => String(i.severity ?? "").toLowerCase().includes("baja")).length;
-      const med = rows.filter((i) => String(i.severity ?? "").toLowerCase().includes("media")).length;
-      const crit = rows.filter((i) =>
-        String(i.severity ?? "").toLowerCase().includes("alta") ||
-        String(i.severity ?? "").toLowerCase().includes("crít") ||
-        String(i.severity ?? "").toLowerCase().includes("crit")
+      const low = rows.filter((i) =>
+        String(i.severity ?? "")
+          .toLowerCase()
+          .includes("baja")
+      ).length;
+      const med = rows.filter((i) =>
+        String(i.severity ?? "")
+          .toLowerCase()
+          .includes("media")
+      ).length;
+      const crit = rows.filter(
+        (i) =>
+          String(i.severity ?? "")
+            .toLowerCase()
+            .includes("alta") ||
+          String(i.severity ?? "")
+            .toLowerCase()
+            .includes("crít") ||
+          String(i.severity ?? "")
+            .toLowerCase()
+            .includes("crit")
       ).length;
 
       const stats = [
-        { label: "Total incidentes", value: total, tone: "red", icon: AlertTriangle },
+        {
+          label: "Total incidentes",
+          value: total,
+          tone: "red",
+          icon: AlertTriangle,
+        },
         { label: "Baja", value: low, tone: "slate", icon: MinusCircle },
         { label: "Media", value: med, tone: "orange", icon: AlertCircle },
         { label: "Crítica", value: crit, tone: "redStrong", icon: Flame },
@@ -780,7 +822,13 @@ const ReportsModuleV2 = ({
         { key: "status", label: "ESTADO", get: (i) => i.status ?? "-" },
       ];
 
-      return { title: "Reportes • Incidentes", stats, rows, columns, filename: "reporte-incidentes.csv" };
+      return {
+        title: "Reportes • Incidentes",
+        stats,
+        rows,
+        columns,
+        filename: "reporte-incidentes.csv",
+      };
     }
 
     if (tab === "suppliers") {
@@ -794,7 +842,12 @@ const ReportsModuleV2 = ({
 
       const stats = [
         { label: "Ingresos", value: total, tone: "blue", icon: Truck },
-        { label: "Empresas", value: uniqueCompanies, tone: "slate", icon: Building2 },
+        {
+          label: "Empresas",
+          value: uniqueCompanies,
+          tone: "slate",
+          icon: Building2,
+        },
         { label: "Rubros", value: uniqueCategories, tone: "orange", icon: Tag },
         { label: "Con patente", value: withPlate, tone: "emerald", icon: Car },
       ];
@@ -807,21 +860,38 @@ const ReportsModuleV2 = ({
         { key: "plate", label: "PATENTE", get: (s) => s.plate ?? "-" },
       ];
 
-      return { title: "Reportes • Proveedores", stats, rows, columns, filename: "reporte-proveedores.csv" };
+      return {
+        title: "Reportes • Proveedores",
+        stats,
+        rows,
+        columns,
+        filename: "reporte-proveedores.csv",
+      };
     }
 
     if (tab === "packages") {
       const rows = (packages ?? []).filter((p) => isWithin(p.date));
       const total = rows.length;
-      const pending = rows.filter((p) => String(p.status ?? "").toLowerCase() === "pending").length;
-      const notified = rows.filter((p) => String(p.status ?? "").toLowerCase() === "notified").length;
-      const delivered = rows.filter((p) => String(p.status ?? "").toLowerCase() === "delivered").length;
+      const pending = rows.filter(
+        (p) => String(p.status ?? "").toLowerCase() === "pending"
+      ).length;
+      const notified = rows.filter(
+        (p) => String(p.status ?? "").toLowerCase() === "notified"
+      ).length;
+      const delivered = rows.filter(
+        (p) => String(p.status ?? "").toLowerCase() === "delivered"
+      ).length;
 
       const stats = [
         { label: "Paquetes", value: total, tone: "orange", icon: Package },
         { label: "Pendientes", value: pending, tone: "slate", icon: Clock },
         { label: "Notificados", value: notified, tone: "blue", icon: Bell },
-        { label: "Entregados", value: delivered, tone: "emerald", icon: CheckCircle },
+        {
+          label: "Entregados",
+          value: delivered,
+          tone: "emerald",
+          icon: CheckCircle,
+        },
       ];
 
       const columns = [
@@ -832,7 +902,13 @@ const ReportsModuleV2 = ({
         { key: "status", label: "ESTADO", get: (p) => p.status ?? "-" },
       ];
 
-      return { title: "Reportes • Paquetería", stats, rows, columns, filename: "reporte-paqueteria.csv" };
+      return {
+        title: "Reportes • Paquetería",
+        stats,
+        rows,
+        columns,
+        filename: "reporte-paqueteria.csv",
+      };
     }
 
     // amenities (placeholder)
@@ -849,8 +925,23 @@ const ReportsModuleV2 = ({
       { key: "time", label: "HORARIO", get: (a) => a.time ?? "-" },
       { key: "status", label: "ESTADO", get: (a) => a.status ?? "-" },
     ];
-    return { title: "Reportes • Amenities", stats, rows, columns, filename: "reporte-amenities.csv" };
-  }, [tab, visits, suppliers, incidents, packages, amenities, dateFrom, dateTo]);
+    return {
+      title: "Reportes • Amenities",
+      stats,
+      rows,
+      columns,
+      filename: "reporte-amenities.csv",
+    };
+  }, [
+    tab,
+    visits,
+    suppliers,
+    incidents,
+    packages,
+    amenities,
+    dateFrom,
+    dateTo,
+  ]);
 
   const tabs = [
     { k: "visits", label: "VISITAS" },
@@ -861,10 +952,13 @@ const ReportsModuleV2 = ({
   ];
 
   const toneToCard = (tone) => {
-    if (tone === "emerald") return "bg-emerald-50 border-emerald-200 text-emerald-700";
-    if (tone === "orange") return "bg-orange-50 border-orange-200 text-orange-700";
+    if (tone === "emerald")
+      return "bg-emerald-50 border-emerald-200 text-emerald-700";
+    if (tone === "orange")
+      return "bg-orange-50 border-orange-200 text-orange-700";
     if (tone === "blue") return "bg-blue-50 border-blue-200 text-blue-700";
-    if (tone === "purple") return "bg-purple-50 border-purple-200 text-purple-700";
+    if (tone === "purple")
+      return "bg-purple-50 border-purple-200 text-purple-700";
     if (tone === "red") return "bg-red-50 border-red-200 text-red-700";
     if (tone === "redStrong") return "bg-red-100 border-red-300 text-red-800";
     return "bg-slate-50 border-slate-200 text-slate-700";
@@ -919,7 +1013,9 @@ const ReportsModuleV2 = ({
           </div>
 
           <button
-            onClick={() => exportCSV(current.rows, current.columns, current.filename)}
+            onClick={() =>
+              exportCSV(current.rows, current.columns, current.filename)
+            }
             className="h-10 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-xs flex items-center justify-center gap-2 shadow-sm"
           >
             <Download size={16} /> Exportar CSV
@@ -934,11 +1030,15 @@ const ReportsModuleV2 = ({
           return (
             <div
               key={idx}
-              className={`rounded-2xl border p-5 shadow-sm ${toneToCard(s.tone)}`}
+              className={`rounded-2xl border p-5 shadow-sm ${toneToCard(
+                s.tone
+              )}`}
             >
               <div className="flex items-start justify-between">
                 <div>
-                  <div className="text-3xl font-black leading-none">{s.value}</div>
+                  <div className="text-3xl font-black leading-none">
+                    {s.value}
+                  </div>
                   <div className="text-[11px] font-black uppercase mt-1 opacity-80">
                     {s.label}
                   </div>
@@ -985,9 +1085,13 @@ const ReportsModuleV2 = ({
                 </tr>
               ) : (
                 current.rows.map((row, i) => (
-                  <tr key={row.id ?? i} className="hover:bg-slate-50 transition-colors">
+                  <tr
+                    key={row.id ?? i}
+                    className="hover:bg-slate-50 transition-colors"
+                  >
                     {current.columns.map((c) => {
-                      const val = typeof c.get === "function" ? c.get(row) : row?.[c.key];
+                      const val =
+                        typeof c.get === "function" ? c.get(row) : row?.[c.key];
                       return (
                         <td key={c.label} className="px-6 py-4 text-slate-700">
                           {val}
@@ -1003,15 +1107,15 @@ const ReportsModuleV2 = ({
       </div>
 
       {/* Nota mock */}
-      {(tab === "packages" && (!packages || packages.length === 0)) && (
+      {tab === "packages" && (!packages || packages.length === 0) && (
         <div className="text-[11px] text-slate-400 font-bold">
-          Nota: Paquetería aún no tiene DB conectada en Admin. Cuando la tengas, pasala como prop: packages=PACKAGES_DB.
+          Nota: Paquetería aún no tiene DB conectada en Admin. Cuando la tengas,
+          pasala como prop: packages=PACKAGES_DB.
         </div>
       )}
     </div>
   );
 };
-
 
 const Toast = ({ message, onClose, type = "success" }) => {
   useEffect(() => {
@@ -4980,6 +5084,7 @@ const GuardView = ({
   openShiftReport, // <-- NUEVO
   shiftLogs,
   setShiftLogs,
+  pushVisitReport,
 }) => {
   const [screen, setScreen] = useState("dashboard");
   const [lprPopupData, setLprPopupData] = useState(null);
@@ -5053,6 +5158,7 @@ const GuardView = ({
           notify={notify}
           addGlobalNotification={addGlobalNotification}
           addLog={addLog}
+          pushVisitReport={pushVisitReport}
         />
       )}
       {screen === "lpr" && (
@@ -5097,6 +5203,7 @@ const GuardVisitsScreen = ({
   notify,
   addGlobalNotification,
   addLog,
+  pushVisitReport,
 }) => {
   const [scanOpen, setScanOpen] = useState(false);
   const [scanType, setScanType] = useState(null); // "dni" | "plate" | "qr"
@@ -5171,6 +5278,13 @@ const GuardVisitsScreen = ({
       },
       ...prev,
     ]);
+    pushVisitReport?.({
+      visitor: `${visitorName} ${visitorLastName}`.trim(),
+      dni: visitorDNI || "s/d",
+      host: host?.unit || "s/d",
+      plate: plate || "s/d",
+      status: "Ingresó",
+    });
 
     setVisitMode("active");
   };
@@ -5205,6 +5319,15 @@ const GuardVisitsScreen = ({
       },
       ...prev,
     ]);
+
+    pushVisitReport?.({
+      visitor: visit.visitor,
+      dni: visit.dni || "s/d",
+      host: visit.host || "s/d",
+      plate: visit.plate || "s/d",
+      status: "Ingresó",
+      time: visit.time, // si existe
+    });
 
     setScreen("dashboard");
   };
@@ -7572,15 +7695,15 @@ const AdminView = ({ onBack, notify, notifications, markAsRead }) => {
         </header>
         <div className="p-8">
           {activeTab === "reports" && (
-  <ReportsModuleV2
-    notify={notify}
-    visits={AUTHORIZED_VISITS_DB}
-    suppliers={SUPPLIERS_DB}
-    incidents={INCIDENTS_DB}
-    // packages={PACKAGES_DB} // si la tenés, la pasás; sino queda vacío
-    // amenities={AMENITIES_DB} // si la tenés
-  />
-)}
+            <ReportsModuleV2
+              notify={notify}
+              visits={AUTHORIZED_VISITS_DB}
+              suppliers={SUPPLIERS_DB}
+              incidents={INCIDENTS_DB}
+              // packages={PACKAGES_DB} // si la tenés, la pasás; sino queda vacío
+              // amenities={AMENITIES_DB} // si la tenés
+            />
+          )}
 
           {activeTab === "notifications" && (
             <AdminNotificationCenter
@@ -7712,7 +7835,6 @@ const AdminView = ({ onBack, notify, notifications, markAsRead }) => {
 export default function App() {
   const [currentRole, setCurrentRole] = useState(null);
   const [currentUser, setCurrentUser] = useState("");
-  
 
   const normalizeTask = (t) => ({
     id: t.id ?? Date.now(),
@@ -7735,6 +7857,28 @@ export default function App() {
   );
   const [showShiftReport, setShowShiftReport] = useState(false);
   const [shiftLogs, setShiftLogs] = useState([]);
+
+  // ✅ Fuente simple para reportes (por ahora solo Visitas)
+  const [reportVisits, setReportVisits] = useState(() => AUTHORIZED_VISITS_DB);
+
+  const pushVisitReport = (row) => {
+    // row: { visitor, dni, host, plate, status, time }
+    const normalized = {
+      id: Date.now(),
+      time:
+        row.time ??
+        new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      visitor: row.visitor ?? "—",
+      dni: row.dni ?? "—",
+      host: row.host ?? "—",
+      plate: row.plate ?? "—",
+      status: row.status ?? "Ingresó",
+    };
+    setReportVisits((prev) => [normalized, ...prev]);
+  };
 
   const addLog = (type, detail) => {
     const time = new Date().toLocaleTimeString([], {
@@ -7805,6 +7949,7 @@ export default function App() {
               openShiftReport={() => setShowShiftReport(true)}
               shiftLogs={shiftLogs}
               setShiftLogs={setShiftLogs}
+              pushVisitReport={pushVisitReport}
             />
           )}
 
@@ -7835,6 +7980,8 @@ export default function App() {
               notify={showNotification}
               notifications={globalNotifications}
               markAsRead={markAsRead}
+              reportVisits={reportVisits}
+              setReportVisits={setReportVisits}
             />
           )}
         </div>
